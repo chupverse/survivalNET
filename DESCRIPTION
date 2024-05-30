@@ -1,0 +1,12 @@
+Package: survivalNET
+Type: Package
+Title: Net Survival Modelling
+Version: 0.1
+Depends: R (>= 4.0.0), splines, survival, relsurv
+Imports: methods, stats, graphics, dplyr
+Description: Several functions and S3 methods to model net survival with flexible approaches: spline-based hazard function, non proportional hazards, etc.
+License: GPL (>=2)
+LazyLoad: yes
+NeedsCompilation: no
+BugReports: https://github.com/chupverse/survivalNET/issues
+Authors@R: c(person("Yohann", "Foucher", role = c("aut", "cre"), email = "yohann.foucher@univ-poitiers.fr", comment = c(ORCID = "0000-0003-0330-7457")), person("Thomas", "Ollard", role = "aut", email = "thomas.ollard@univ-poitiers.fr", comment = c(ORCID = "0009-0001-5122-9214")) )
