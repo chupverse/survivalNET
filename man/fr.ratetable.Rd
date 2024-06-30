@@ -5,7 +5,7 @@
 Expected Mortality Rates of the General French Population
 }
 \description{
-An object of class ratetable for the expected mortality of the French population. It is an array with three dimensions: age, sex and year.
+An object of class ratetable for the expected mortality of the French population. It is an array with three dimensions: age, year, and sex.
 }
 \usage{data(fr.ratetable)}
 \format{
@@ -42,4 +42,4 @@ data(fr.ratetable)
 is.ratetable(fr.ratetable)
 }
 
-\keyword{Ratetable}
+\keyword{Data}

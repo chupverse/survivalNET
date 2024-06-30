@@ -1,19 +1,13 @@
 
 # Expected instantaneous hazard, age in days
+# date in number of days since 1960 / age in years / time in days
 
-expectedhaz <- function(ratetable, age, sex, year, time)
+expectedhaz <- function(ratetable, age, year, sex, time) 
 {
-  age.year<-age/365.24 
-  t.year<-time/365.24
-
-  maxyear.ratetable<-max(as.numeric(attributes(ratetable)$dimnames[[3]]))
-  minage.year.ratetable<-round(min(as.numeric(attributes(ratetable)$dimnames[[1]])/365.24))
-
-  return(
-      mapply(FUN = function(age, sex, year) { ratetable[age, sex, year] }, 
-             trunc(trunc(age.year)+t.year)-minage.year.ratetable+1,
-             sex, as.character(pmin(maxyear.ratetable,trunc(year+t.year)))
-             )
-  )
+  time <- min(time, 1000000)
+  .year <- date.mdy(year+time)$year
+  
+  ratetable[as.character( min( floor((age+time)/365.24), max(as.numeric(names(ratetable[, "2000", "male"]))) ) ),
+            as.character( min( .year, max(as.numeric(names(ratetable["51", , "male"]))) ) ),
+            sex]
 }
-

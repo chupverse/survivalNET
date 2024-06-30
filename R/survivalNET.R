@@ -1,5 +1,5 @@
 
-survivalNET <- function(formula, data, ratetable, age, sex, year, dist="weibull", strata=NULL, weights=NULL)
+survivalNET <- function(formula, data, ratetable, age, year, sex, dist="weibull", strata=NULL, weights=NULL)
 {
   
   ####### check errors
@@ -10,20 +10,20 @@ survivalNET <- function(formula, data, ratetable, age, sex, year, dist="weibull"
   if (missing(age)) stop("an age argument is required")
   if (missing(sex)) stop("a sex argument is required")
   if (missing(year)) stop("a year argument is required")
-  if (class(formula) != "formula") stop("The first argument must be a formula")
-  if (class(data) != "data.frame") stop("The second argument must be a data frame")
-  if (length(dim(ratetable))!=3) stop("The life table must have 3 dimensions in the (age, sex, birth year) order")
-  if (dim(ratetable)[2]!=2) stop("The life table must have 3 dimensions in the (age, sex, birth year) order")
+  if (as.character(class(formula)) != "formula") stop("The first argument must be a formula")
+  if (as.character(class(data)) != "data.frame") stop("The second argument must be a data frame")
+  if (length(dim(ratetable))!=3) stop("The life table must have 3 dimensions: age, year, sex")
+  if (dim(ratetable)[3]!=2) stop("The life table must have 3 dimensions: age, year, sex")
   if(!(dist %in% c("exponential","weibull","genweibull")))  stop("Argument 'dist' must be 'exponential', 'weibull', or 'genweibull' ")
   
   ####### data management
   
-  time <- data[,as.character(formula[[2]][2])]
+  time <- data[,as.character(formula[[2]][2])] # Thomas: test initial une unite en jours comme relsurv
   event <- data[,as.character(formula[[2]][3])]
   cova <- as.matrix(data[,gsub("\\+", "", attr(terms(formula), "term.labels"))])
-  age <- data[,age]
-  sex <- data[,sex]
-  year <- data[,year]
+  age <- data[,age] # Thomas: test initial une unite en jours 
+  sex <- data[,sex] # Thomas: test initial si caractere "male" ou "female" -> rien d'autre (sauf eventuellement NA car supprimer ensuite)
+  year <- data[,year] # Thomas: test initial si nombre de jours depuis 1960  
   if(!is.numeric(age)) stop("Argument 'age' must be a numeric vector")
   if(!is.character(sex)) stop("Argument 'sex' must be a character string")
   if(min(names(table(sex)) %in% c("female","male"))==0) stop("Argument 'p.sex' must be 'male' or 'female'")
@@ -34,42 +34,49 @@ survivalNET <- function(formula, data, ratetable, age, sex, year, dist="weibull"
   
   time <- time[na]
   event <- event[na]
-  cova <- cova[na,]
+  cova <- as.matrix(cova[na,])
   age <- age[na]
   sex <- sex[na]
   year <- year[na]
   
   ###### Compute the expected mortality of individuals
   
-   hP <- expectedhaz(ratetable, age, sex, year, time) # compute instantaneous hazards
-   HP <- expectedcumhaz(ratetable, age, sex, year, time) # compute cumulative hazards
-  
+   #hP <- expectedhaz(ratetable, age=age, sex=sex, year=year, time=time) # compute instantaneous hazards
+   
+   hP <- rep(-99, length(time))
+   for (i in 1:length(time))
+   {
+     hP[i] <- expectedhaz(ratetable=ratetable, age=age[i], sex=sex[i], year=year[i], time=time[i])
+   }
+   
+   # Thomas -> apply pour rapidite
+   
    ###### log likelihood functions
    
-   logll1 <- function(sigma, nu, theta, beta, time, event, cova, hP, HP){
+   logll1 <- function(sigma, nu, theta, beta, time, event, cova, hP){
    return(-1*sum(event*log(hP+exp(cova%*%beta)*(
      (1/theta)*(1+(time/sigma)^nu)^((1/theta)-1)*(nu/sigma)*(time/sigma)^(nu-1) ) )
-     - HP + exp(cova%*%beta)*(1-(1+(time/sigma)^nu)^(1/theta)))) }
+     + exp(cova%*%beta)*(1-(1+(time/sigma)^nu)^(1/theta)))) }
    
-   logll0 <- function(sigma, nu, theta, time, event, hP, HP){
+   logll0 <- function(sigma, nu, theta, time, event, hP){
      return(-1*sum(event*log(hP+(
        (1/theta)*(1+(time/sigma)^nu)^((1/theta)-1)*(nu/sigma)*(time/sigma)^(nu-1) ) )
-       - HP + (1-(1+(time/sigma)^nu)^(1/theta)))) }
+       + (1-(1+(time/sigma)^nu)^(1/theta)))) }
    
    if (dist=="genweibull"){
      label <- c("log sigma", "log nu", "log theta", gsub("\\+", "", attr(terms(formula), "term.labels")))
      
      init1 <- c(rep(0,3),rep(0,dim(cova)[2]))
     
-     loglik1 <- function(par, time, event, cova, hP, HP){
+     loglik1 <- function(par, time, event, cova, hP){
           sigma <- exp(par[1]); nu <- exp(par[2]);  theta <- exp(par[3]); beta <- par[4:(3+dim(cova)[2])] 
-          return(logll1(sigma, nu, theta, beta, time, event, cova, hP, HP)) }
+          return(logll1(sigma, nu, theta, beta, time, event, cova, hP)) }
      
      init0 <- rep(0,3)
      
-     loglik0 <- function(par, time, event, cova, hP, HP){
+     loglik0 <- function(par, time, event, cova, hP){
        sigma <- exp(par[1]); nu <- exp(par[2]);  theta <- exp(par[3]) 
-       return(logll0(sigma, nu, theta, time, event, hP, HP)) }
+       return(logll0(sigma, nu, theta, time, event, hP)) }
     }
   
    
@@ -78,15 +85,15 @@ survivalNET <- function(formula, data, ratetable, age, sex, year, dist="weibull"
      
      init1 <- c(rep(0,2),rep(0,dim(cova)[2]))
      
-     loglik1 <- function(par, time, event, cova, hP, HP){
+     loglik1 <- function(par, time, event, cova, hP){
        sigma <- exp(par[1]); nu <- exp(par[2]);  theta <- 1; beta <- par[3:(2+dim(cova)[2])] 
-       return(logll1(sigma, nu, theta, beta, time, event, cova, hP, HP)) }
+       return(logll1(sigma, nu, theta, beta, time, event, cova, hP)) }
      
      init0 <- rep(0,2)
      
-     loglik0 <- function(par, time, event, cova, hP, HP){
+     loglik0 <- function(par, time, event, cova, hP){
        sigma <- exp(par[1]); nu <- exp(par[2]);  theta <- 1
-       return(logll0(sigma, nu, theta, time, event, hP, HP)) }
+       return(logll0(sigma, nu, theta, time, event, hP)) }
    }
    
    if (dist=="exponential"){
@@ -94,47 +101,46 @@ survivalNET <- function(formula, data, ratetable, age, sex, year, dist="weibull"
      
      init1 <- c(rep(0,1),rep(0,dim(cova)[2]))
      
-     loglik1 <- function(par, time, event, cova, hP, HP){
+     loglik1 <- function(par, time, event, cova, hP){
        sigma <- exp(par[1]); nu <- 1;  theta <- 1; beta <- par[2:(1+dim(cova)[2])] 
-       return(logll1(sigma, nu, theta, beta, time, event, cova, hP, HP)) }
+       return(logll1(sigma, nu, theta, beta, time, event, cova, hP)) }
      
      init0 <- rep(0,1)
      
-     loglik0 <- function(par, time, event, cova, hP, HP){
+     loglik0 <- function(par, time, event, cova, hP){
        sigma <- exp(par[1]); nu <- 1;  theta <- 1
-       return(logll0(sigma, nu, theta, time, event, hP, HP)) }
+       return(logll0(sigma, nu, theta, time, event, hP)) }
    }
    
    
    logllmax0 <- optim(par = init0, fn = loglik0, time = time, event = event,
-                      hP = hP, HP = HP )
+                      hP = hP)
    
    indic <- 0
    while(indic <= 5){
      ll_val <- logllmax0$value
-     logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, event = event,
-                        hP = hP, HP = HP )
+     logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, event = event, hP = hP)
      delta <- ll_val - logllmax0$value
      if(delta ==0) {indic = indic + 1}
    }
    
    logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, event = event,
-                      cova = cova, hP = hP, HP = HP, hessian = TRUE)
+                      cova = cova, hP = hP, hessian = TRUE)
    
    logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
-                     cova = cova, hP = hP, HP = HP )
+                     cova = cova, hP = hP)
    
   indic <- 0
   while(indic <= 5){
     ll_val <- logllmax1$value
     logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, event = event,
-                cova = cova, hP = hP, HP = HP )
+                cova = cova, hP = hP)
     delta <- ll_val - logllmax1$value
     if(delta ==0) {indic = indic + 1}
   }
   
   logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, event = event,
-                    cova = cova, hP = hP, HP = HP, hessian = TRUE)
+                    cova = cova, hP = hP, hessian = TRUE)
   
   t.table <- data.frame(coef = logllmax1$par,
                         ecoef = exp(logllmax1$par),
@@ -150,6 +156,8 @@ survivalNET <- function(formula, data, ratetable, age, sex, year, dist="weibull"
   
   betaestim <- coefficients[names(coefficients) %in% gsub("\\+", "", attr(terms(formula), "term.labels"))]
   lp <- cova %*% betaestim
+  
+  dimnames(cova)[[2]] <- gsub("\\+", "", attr(terms(formula), "term.labels"))
   
   res <- list(
     formula = formula,

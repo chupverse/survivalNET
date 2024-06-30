@@ -8,17 +8,18 @@ Parametric Net survival
 This function allows to compute a parametric regression for modelling net survival.
 }
 \usage{
-survivalNET(formula, data, ratetable, age, sex, year, dist="weibull", strata=NULL, weights=NULL)
+survivalNET(formula, data, ratetable, age, year, sex, dist="weibull",
+strata=NULL, weights=NULL)
 }
 
 \arguments{
 \item{formula}{a formula object, with the response on the left of a ~ operator, and the terms on the right. The response must be a survival object as returned by the \code{Surv} function.}
 \item{data}{A data frame in which to look for the variables included in the \code{formula}.}
 \item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for the motality of the French population, i.e. an array with three dimensions: age, sex and year.}
-\item{age}{A numeric vector with the patient ages in days at baseline.}
-\item{sex}{A character vector with the genders: \code{male} or \code{female}.}
-\item{year}{A numeric vector with the entry dates in the study respecting the date format, i.e. in number of days since 01.01.1960.}
-\item{dist}{One of the character strings listed in the following table to define the baseline hazard function. By default, the Weibull distribution is used.}
+\item{age}{A numeric vector with the patient age at baseline in days.}
+\item{year}{A numeric vector with the baseline date in the study respecting the date format, i.e. in number of days since 01.01.1960.}
+\item{sex}{A character vector with the gender: "male" or "female".}
+\item{dist}{A character string listed in the following table to define the baseline hazard function. By default, the Weibull distribution is used.}
 \item{strata}{An optional argument indicating the strata for which separate baseline hazard functions are fit.}
 \item{weights}{A numeric vector with a weigthed likelihood, i.e. different contributions of individuals. By defaut, the weigths equal 1.}
 }
@@ -54,63 +55,26 @@ Dickman PW, Sloggett A, Hills M, and Hakulinen T (2004). Regression models for r
 }
 
 \examples{
-####### Observed survival
+data(dataK) # the database with the observed sample
+data(fr.ratetable) # the table with the expected mortality rates
 
-Sfun <- function(time, sigma, nu, theta, covariate, coef, ratetable, age, sex, year)
-  {
-  exp(-expectedcumhaz(ratetable, age, sex, year, time)) *
-  exp((1-(1+(time/sigma)^nu)^(1/theta)) * exp(covariate \%*\% coef))
-  }
+# The non-parametric estimation of the net survival curves 
 
-######## function for times-to-event simulation
+PPest <- rs.surv(Surv(time, event) ~ stade + delay, data = dataK,
+                   ratetable = fr.ratetable, method = "pohar-perme",
+                   rmap = list(age = age, sex = sex, year = year))
 
-SimT <- function(n, logsigma, lognu, logtheta, covariate, coef, ratetable, age, sex, year)
-  {
-  survivaltimes = sapply(1:n,
-                    function(i) {
-                     u <- runif(1)
-                     time <- uniroot(function(x) 1- Sfun(x, exp(logsigma), exp(lognu), exp(logtheta),
-                              covariate[i,], coef, ratetable,
-                              age[i], sex[i], year[i]) - u, interval = c(0, 1000))$root
-                   return(time)
-                                  }
-                         )
-  return(survivaltimes)
-  }
+plot(PPest) 
 
-######## function times-to-censoring simulation
+# The parametric estimation of the net survival curves (weibull distribution)
 
-SimC <- function(u, sigma) { (1/-sigma) * log(1-u) }
+sNET <- survivalNET(Surv(time, event) ~ stade + delay, data = dataK, ratetable=fr.ratetable,
+                     age="age", sex="sexchara", year="year", dist="weibull",
+                     strata=NULL, weights=NULL)
 
-######## Simulations
+sNET.pred <- predict(sNET, newdata=data.frame( stade=c(0,0,1,1), delay=c(0,1,0,1) ) )
 
-n <- 2000 #sample size
-
-# Patient characteristics at baseline
-sex01 <- rbinom(n, 1, 0.5)
-sex <- rep("male", n)
-sex[sex01==1] <- "female"
-age <- floor(runif(n, 0, 78)) 
-birthyear <- floor(runif(n, 1940, 1981))
-stade <- rbinom(n, 1, 0.3)
-bruit <- rnorm(n, 0, 1)
-
-data("fr.ratetable")
-
-p <- c(1.25, 0.9, 0, 0.6, 0.4, 0.01)
-timeT <- SimT(n, logsigma = p[1], lognu = p[2], logtheta = p[3], covariate = cbind(sex01, stade, age),
-                 coef = c(p[4], p[5], p[6]), ratetable = fr.ratetable,
-                 age = age, sex = sex, year = birthyear)
-
-timeC <- SimC(runif(n), 0.2) #censoring time
-
-simdata <- data.frame(
-  time = pmin(timeT, timeC),
-  status = 1*(timeC >= timeT),
-  sex, sex01, stade, age, birthyear)
-
-mod1 <- survivalNET(Surv(time, status) ~ sex01 + stade + age, data = simdata, ratetable=fr.ratetable,
-              age="age", sex="sex", year="birthyear", dist="weibull")
+for (i in 1:4) {lines(sNET.pred$times, sNET.pred$predictions[i,], col=2)}
 }
 
 \keyword{Net survival}
