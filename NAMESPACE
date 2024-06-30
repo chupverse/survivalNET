@@ -1,21 +1,23 @@
 import(splines)
+import(date)
 import(survival)
 import(relsurv)
 
 importFrom("methods", "hasArg")
 
-importFrom(dplyr, last)
+importFrom("dplyr", "last")
 
 importFrom("stats", "median", "optim", "pchisq", "pnorm", "predict",
              "quantile", "terms")
   
-importFrom(graphics, abline, lines, plot.default, grid, segments)
+importFrom("graphics", "abline", "lines", "plot.default", "grid", "segments")
 
 export(survivalNET)
 export(expectedcumhaz)
 export(expectedhaz)
 
-#S3method(predict, survivalNET)
+
+S3method(predict, survivalNET)
 #S3method(summary, survivalNET)
 #S3method(plot, survivalNET)
 #S3method(print, survivalNET)

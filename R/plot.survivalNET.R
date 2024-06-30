@@ -1,12 +1,12 @@
 
 plot.survivalNET <- function(x, n.groups=5, pro.time=NULL, newdata=NULL,
-                             ratetable, age, sex, year, ...)
+                             ratetable, age, year, sex,  ...)
 {
   if(is.null(pro.time))  { pro.time <- median(x$y[,1]) }
   
   if(is.null(newdata))
     {
-    cova <- data.frame(x$x)
+    cova <-data.frame(x$x)
     time <- x$y[,1];  event <- x$y[,2]
     .age <- x$asy$age; .sex <- x$asy$sex; .year <- x$asy$year
     }
@@ -32,17 +32,28 @@ plot.survivalNET <- function(x, n.groups=5, pro.time=NULL, newdata=NULL,
     
   .est <- sapply(1:n.groups, FUN = function(x) { mean(.pred[.grps==x]) } )
     
-  #.survfit <- summary(survfit(Surv(time, event) ~ as.factor(.grps)))
-  
-  .data <- data.frame(timedays = time*365.241, event = event, grps = .grps,
+  .data <- data.frame(time = time, event = event, grps = .grps,
                       age = .age, sex = .sex, year=.year)
   
-  .survfit <- summary(rs.surv(Surv(timedays, event)~ as.factor(grps), method = "pohar-perme",
-                              rmap=list(age=age*365.241, sex=sex, year=year), ratetable=ratetable, data=.data))
+  #.data$sexnum <- 2 
+  #.data$sexnum[.data$sex=="male"] <- 1
   
-  .obs <- sapply(1:n.groups, FUN = function(x) { last(.survfit$surv[ as.numeric(.survfit$strata)==x & .survfit$time<=(pro.time*365.241) ]) } )
-  .lower <- sapply(1:n.groups, FUN = function(x) { last(.survfit$lower[ as.numeric(.survfit$strata)==x & .survfit$time<=(pro.time*365.241) ]) } )
-  .upper <- sapply(1:n.groups, FUN = function(x) { last(.survfit$upper[ as.numeric(.survfit$strata)==x & .survfit$time<=(pro.time*365.241) ]) } )
+  .data$sex <- 1*(.data$sex=="female") + 1
+  
+  .survfit <- summary(rs.surv(Surv(time, event) ~ grps, method = "pohar-perme",
+                              rmap=list(age=age, sex=sex, year=year), ratetable=ratetable, data=.data))
+  
+  .obs <- sapply(1:n.groups, FUN = function(x) {
+    .indic <- sum(as.numeric(.survfit$strata)==x & .survfit$time<=pro.time)
+    .survfit$surv[ .indic ] } )
+  
+  .lower <- sapply(1:n.groups, FUN = function(x) {
+    .indic <- sum(as.numeric(.survfit$strata)==x & .survfit$time<=pro.time)
+    .survfit$lower[ .indic ] } )
+  
+  .upper <- sapply(1:n.groups, FUN = function(x) {
+    .indic <- sum(as.numeric(.survfit$strata)==x & .survfit$time<=pro.time)
+    .survfit$upper[ .indic ] } )
   
     if(hasArg(cex)==FALSE) {cex <-1} else {cex <- list(...)$cex}
     if(hasArg(cex.lab)==FALSE) {cex.lab <- 1} else {cex.lab <- list(...)$cex.lab}

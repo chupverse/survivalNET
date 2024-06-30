@@ -2,7 +2,7 @@
 
 predict.survivalNET <- function(object, type="survival", newdata=NULL, newtimes=NULL, ...){
   
-if(is.null(newtimes))  { newtimes <- sort(unique(object$y[,1])) }
+if(is.null(newtimes))  { newtimes <- 0:max(object$y[,1]) }
   
 if(!is.null(newdata))
   {
