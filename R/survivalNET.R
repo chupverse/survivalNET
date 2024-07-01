@@ -112,20 +112,31 @@ survivalNET <- function(formula, data, ratetable, age, year, sex, dist="weibull"
        return(logll0(sigma, nu, theta, time, event, hP)) }
    }
    
-   
+   if (dist == "exponential") {
+     method <- "Brent"
+     lower <- -100000
+     upper <-  100000
+   } else {
+     method <- "Nelder-Mead" 
+     lower <- -Inf
+     upper <-  Inf
+   }
    logllmax0 <- optim(par = init0, fn = loglik0, time = time, event = event,
-                      hP = hP)
+                      hP = hP, method = method, lower = lower, upper = upper)
    
    indic <- 0
    while(indic <= 5){
      ll_val <- logllmax0$value
-     logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, event = event, hP = hP)
+     logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
+                        event = event, hP = hP, method = method, 
+                        lower = lower, upper = upper)
      delta <- ll_val - logllmax0$value
      if(delta ==0) {indic = indic + 1}
    }
    
-   logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, event = event,
-                      cova = cova, hP = hP, hessian = TRUE)
+   logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
+                      event = event, cova = cova, hP = hP, hessian = TRUE,
+                      method = method, lower = lower, upper = upper)
    
    logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
                      cova = cova, hP = hP)
