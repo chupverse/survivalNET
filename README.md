@@ -1,4 +1,4 @@
-survivalNET: an R Package for Flexible Modeling and Predicting Net Survival
+survivalNET: an R Package for Flexible Relative and Net Survival 
 ================
 
 ## Description
