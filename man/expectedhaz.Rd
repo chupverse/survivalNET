@@ -5,14 +5,14 @@
 Expected Instantaneous Hazard
 }
 \description{
-This function returns the expected instantaneous hazard from a ratetable according to age, sex and year at baseline.
+This function returns the expected instantaneous hazard from a rate table according to age, sex and year at baseline.
 }
 \usage{
 expectedhaz(ratetable, age, year, sex, time)
 }
 
 \arguments{
-\item{ratetable}{A table of expected rates of the event, such as \code{fr.ratetable} for the motality of the French population, i.e. an array with three dimensions: age, sex and year. The names of the arguments \code{age} and \code{year} must be a sequence of years by steps equal to 1 years.}
+\item{ratetable}{A table of expected rates of the event, such as \code{fr.ratetable} for the mortality of the French population, i.e. an array with three dimensions: age, sex and year. The names of the arguments \code{age} and \code{year} must be a sequence of years by steps equal to 1 years.}
 \item{age}{A scalar with the patient age in days at baseline.}
 \item{year}{A scalar with the baseline date  in days since 01.01.1960.}
 \item{sex}{A character vector with the gender: "male" or "female".}
@@ -33,5 +33,3 @@ attributes(fr.ratetable)$dimnames$year
 date.ddmmmyy(14000)
 expectedhaz(fr.ratetable, age=50*365, sex="male", year=2010, time=14000)
 }
-
-\keyword{Ratetable}

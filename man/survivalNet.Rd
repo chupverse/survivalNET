@@ -15,13 +15,13 @@ strata=NULL, weights=NULL)
 \arguments{
 \item{formula}{a formula object, with the response on the left of a ~ operator, and the terms on the right. The response must be a survival object as returned by the \code{Surv} function.}
 \item{data}{A data frame in which to look for the variables included in the \code{formula}.}
-\item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for the motality of the French population, i.e. an array with three dimensions: age, sex and year.}
+\item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for the mortality of the French population, i.e. an array with three dimensions: age, sex and year.}
 \item{age}{A numeric vector with the patient age at baseline in days.}
-\item{year}{A numeric vector with the baseline date in the study respecting the date format, i.e. in number of days since 01.01.1960.}
+\item{year}{A numeric vector with the baseline date in the study respecting the date format: number of days since 01.01.1960.}
 \item{sex}{A character vector with the gender: "male" or "female".}
 \item{dist}{A character string listed in the following table to define the baseline hazard function. By default, the Weibull distribution is used.}
 \item{strata}{An optional argument indicating the strata for which separate baseline hazard functions are fit.}
-\item{weights}{A numeric vector with a weigthed likelihood, i.e. different contributions of individuals. By defaut, the weigths equal 1.}
+\item{weights}{A numeric vector with a weighted likelihood, i.e. different contributions of individuals. By default, the weights equal 1.}
 }
 
 \details{
@@ -66,7 +66,7 @@ PPest <- rs.surv(Surv(time, event) ~ stade + delay, data = dataK,
 
 plot(PPest) 
 
-# The parametric estimation of the net survival curves (weibull distribution)
+# The parametric estimation of the net survival curves (Weibull distribution)
 
 sNET <- survivalNET(Surv(time, event) ~ stade + delay, data = dataK, ratetable=fr.ratetable,
                      age="age", sex="sexchara", year="year", dist="weibull",
@@ -77,4 +77,4 @@ sNET.pred <- predict(sNET, newdata=data.frame( stade=c(0,0,1,1), delay=c(0,1,0,1
 for (i in 1:4) {lines(sNET.pred$times, sNET.pred$predictions[i,], col=2)}
 }
 
-\keyword{Net survival}
+\keyword{Regressing}
