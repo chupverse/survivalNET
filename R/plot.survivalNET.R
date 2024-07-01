@@ -70,9 +70,10 @@ plot.survivalNET <- function(x, n.groups=5, pro.time=NULL, newdata=NULL,
     
     if(hasArg(ylab)==FALSE) {ylab <- "Non-parametric estimations"} else {ylab <- list(...)$ylab}
     if(hasArg(xlab)==FALSE) {xlab <- "Parametric estimations"} else {xlab <- list(...)$xlab}
-    
+    if(hasArg(main)==FALSE) {main <- ""} else {main <- list(...)$main}
+  
    plot(.est, .obs, cex = cex, cex.lab = cex.lab, cex.axis = cex.axis, cex.main = cex.main,
-         type = type, col = col, lty = lty, lwd = lwd,
+         type = type, col = col, lty = lty, lwd = lwd, main=main,
          pch = pch, ylim = ylim, xlim = xlim, ylab=ylab, xlab=xlab)
     
    abline(c(0,1), lty=2)

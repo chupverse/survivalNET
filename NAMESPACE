@@ -16,8 +16,7 @@ export(survivalNET)
 export(expectedcumhaz)
 export(expectedhaz)
 
-
 S3method(predict, survivalNET)
+S3method(print, survivalNET)
+S3method(plot, survivalNET)
 #S3method(summary, survivalNET)
-#S3method(plot, survivalNET)
-#S3method(print, survivalNET)

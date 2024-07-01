@@ -1,6 +1,6 @@
 Package: survivalNET
 Type: Package
-Title: Net Survival Modelling
+Title: Relative or Net Survival
 Version: 0.1
 Depends: R (>= 4.0.0), splines, date, survival, relsurv
 Imports: methods, stats, graphics, dplyr

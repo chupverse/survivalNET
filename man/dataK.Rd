@@ -9,7 +9,7 @@ An data frame with a simulated sample of patients with a cancer and their follow
 }
 \usage{data(dataK)}
 \format{
-The format is "data.frame". The names of the colmuns are:
+The format is "data.frame". The names of the columns are:
 \tabular{rl}{
 "sex"       "age"       "year"      "stade"     "delay"     "biomarker" "sexchara"  "event"     "time"    
 
@@ -19,8 +19,8 @@ The format is "data.frame". The names of the colmuns are:
 \code{year} \tab A numeric vector with the date of diagnosis (in date format, i.e. the number of days since 1Jan60). \cr
 \code{stade} \tab A numeric vector with the disease stage: 1 for advanced cancer and 0 otherwise. \cr
 \tab according to the time. Only the dimension related to \code{sex} equals 1. \cr
-\code{delay} \tab A numeric vector indiquating if the cancer was early diagnosed: 1 for delayed diagnosis and 0 otherwise. \cr
-\code{biomarker} \tab  A numeric vector with the level of a continuous biomarker with is asssociated with an increase cancer-specific mortality. \cr
+\code{delay} \tab A numeric vector indicating if the cancer was early diagnosed: 1 for delayed diagnosis and 0 otherwise. \cr
+\code{biomarker} \tab  A numeric vector with the level of a continuous biomarker with is associated with an increase cancer-specific mortality. \cr
 \code{sexchara} \tab  A character vector with the patient gender: "male" or "female". \cr
 \code{event} \tab  A numeric vector equals 1 for death and 0 for censoring. \cr
 \code{time} \tab  A numeric vector with the follow-up time in days since the cancer diagnostic.
@@ -28,7 +28,7 @@ The format is "data.frame". The names of the colmuns are:
 }
 
 \details{
-The data frame was obtain by simulations. The French mortality were used for the expected mortality and a proportional hazard model with an Exponential distribution for the baseline hazard.
+The data frame was obtained by simulations. The French mortality tables were used for the expected mortality and a proportional hazard model with an Exponential distribution for the baseline hazard.
 }
 
 \examples{

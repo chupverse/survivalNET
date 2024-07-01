@@ -5,7 +5,7 @@
 Expected Mortality Rates of the General French Population
 }
 \description{
-An object of class ratetable for the expected mortality of the French population. It is an array with three dimensions: age, year, and sex.
+An object of class rate table for the expected mortality of the French population. It is an array with three dimensions: age, year, and sex.
 }
 \usage{data(fr.ratetable)}
 \format{
@@ -23,7 +23,7 @@ The format is "ratetable". The attributes are:
 }
 
 \details{
-The organization of a ratetable object is described in details by Therneau (1999) and Pohar (2006). The original data and updates can be downloaded from the Human Life-Table Database (HMD, The Human Mortality Database).
+The organization of a rate table object is described in detail by Therneau (1999) and Pohar (2006). The original data and updates can be downloaded from the Human Life-Table Database (HMD, The Human Mortality Database).
 }
 
 \source{

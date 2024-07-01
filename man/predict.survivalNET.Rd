@@ -29,22 +29,23 @@ Predict the net survival based on a model or algorithm from an object of the cla
 data(dataK) # the database with the observed sample
 data(fr.ratetable) # the table with the expected mortality rates
 
-# Estimate the multivariate net survival model 
+# The non-parametric estimation of the net survival curves 
 
-sNET <- survivalNET(Surv(time, event) ~ biomarker + sex + stade + delay, data = dataK,
-         ratetable=fr.ratetable, age="age", sex="sexchara", year="year", dist="weibull",
-                    strata=NULL, weights=NULL)
+PPest <- rs.surv(Surv(time, event) ~ stade + delay, data = dataK,
+                   ratetable = fr.ratetable, method = "pohar-perme",
+                   rmap = list(age = age, sex = sex, year = year))
 
-# Consider women with a biomarker equals 0.5, a delayed diagnosis of an advanced cancer
+plot(PPest) 
 
-sNET.pred <- predict(sNET, newdata = 
-                       data.frame( biomarker=0.5, sex=2, stade=0, delay=1 ) )
+# The parametric estimation of the net survival curves (Weibull distribution)
 
+sNET <- survivalNET(Surv(time, event) ~ stade + delay, data = dataK, ratetable=fr.ratetable,
+                     age="age", sex="sexchara", year="year", dist="weibull",
+                     strata=NULL, weights=NULL)
 
-# Plot the related net survival
+sNET.pred <- predict(sNET, newdata=data.frame( stade=c(0,0,1,1), delay=c(0,1,0,1) ) )
 
-plot(sNET.pred$times/365.24, sNET.pred$predictions, type = "l",
-     xlab = "Time since the diagnosis in years", ylab="Predicted net survival")
+for (i in 1:4) {lines(sNET.pred$times, sNET.pred$predictions[i,], col=2)}
 }
 
 \keyword{Predicting}
