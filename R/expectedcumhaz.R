@@ -28,4 +28,31 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
     
     return(integrateA(Vectorize(.f), lower=0, upper=time, subdivisions = subdivisions)$value)
   }
+  ### en développement
+  # if(method == "table"){
+  #   # year_seq = seq(0,t, by = 365.24)
+  #   # birthday_seq = sapply(1:nrow(dataK), function(i)
+  #   #                     {tail(seq.Date(as.Date(dataK$year[i]-dataK$age[i],
+  #   #                     origin = "1960-1-1"),as.Date(t, origin =
+  #   #                     as.Date(dataK$year[i])),"years"),floor(t/365.24))
+  #   # }
+  #   # )
+  # 
+  #   birth_date <- format(as.Date(dataK$year[2]-dataK$age[2],
+  #                 origin = "1960-1-1"), "%m-%d")
+  #   # year_date <- format(as.Date(dataK$year[2], origin = "1960-1-1"), "%m-%d")
+  # 
+  #   this_birthday <- as.Date(paste0(as.numeric(format(as.Date(dataK$year[2],
+  #                                 origin = "1960-1-1"), "%Y")),
+  #                                 paste0("-",birth_date)))
+  # 
+  #   next_year_date <- as.Date(paste0(as.numeric(format(as.Date(dataK$year[2],
+  #                                 origin = "1960-1-1"),"%Y")) + 1, "-01-01"))
+  # 
+  #   if(this_birthday>as.Date(dataK$year[2], origin = "1960-1-1")){
+  #     as.numeric(difftime(next_year_date, this_birthday, units = "days"))}
+  #   if(this_birthday<as.Date(dataK$year[2], origin = "1960-1-1")){}
+  # 
+  # 
+  # }
 }

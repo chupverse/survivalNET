@@ -16,9 +16,9 @@ strata=NULL, weights=NULL)
 \item{formula}{a formula object, with the response on the left of a ~ operator, and the terms on the right. The response must be a survival object as returned by the \code{Surv} function.}
 \item{data}{A data frame in which to look for the variables included in the \code{formula}.}
 \item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for the mortality of the French population, i.e. an array with three dimensions: age, sex and year.}
-\item{age}{A numeric vector with the patient age at baseline in days.}
-\item{year}{A numeric vector with the baseline date in the study respecting the date format: number of days since 01.01.1960.}
-\item{sex}{A character vector with the gender: "male" or "female".}
+\item{age}{The name of the column of the data base with the patient age at baseline in days. The column values must be numeric.}
+\item{year}{The name of the column with the baseline date in the study respecting the date format: number of days since 01.01.1960. The column values must be of the class 'date'. Use \code{as.date()} to change your numeric values to date values.}
+\item{sex}{The name of the column of the data frame with the genders: "male" or "female". The column must be a of the class 'character'.}
 \item{dist}{A character string listed in the following table to define the baseline hazard function. By default, the Weibull distribution is used.}
 \item{strata}{An optional argument indicating the strata for which separate baseline hazard functions are fit.}
 \item{weights}{A numeric vector with a weighted likelihood, i.e. different contributions of individuals. By default, the weights equal 1.}
@@ -40,7 +40,7 @@ with \eqn{\sigma}, \eqn{\nu},and \eqn{\theta>0}.
 \item{coefficients}{A vector with the regression coefficients of the excess hazard.}
 \item{var}{The variance-covariance matrix of the regression \code{coefficients}.}
 \item{t.table}{A data frame with the estimates, the standard deviations, Wald statistics, and p-values.}
-\item{loglik}{A vector of length 2 containing the log-likelihood of the model without and with the ccovariates.}
+\item{loglik}{A vector of length 2 containing the log-likelihood of the model without and with the covariates.}
 \item{linear.predictors}{A vector with the linear predictor of the included individuals.}
 \item{missing}{A vector of logical values indication whether individuals are included or excluded because of missing data.}
 \item{n}{The number of individuals used in the fit.}
