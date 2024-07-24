@@ -29,30 +29,63 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
     return(integrateA(Vectorize(.f), lower=0, upper=time, subdivisions = subdivisions)$value)
   }
   ### en développement
-  # if(method == "table"){
-  #   # year_seq = seq(0,t, by = 365.24)
-  #   # birthday_seq = sapply(1:nrow(dataK), function(i)
-  #   #                     {tail(seq.Date(as.Date(dataK$year[i]-dataK$age[i],
-  #   #                     origin = "1960-1-1"),as.Date(t, origin =
-  #   #                     as.Date(dataK$year[i])),"years"),floor(t/365.24))
-  #   # }
-  #   # )
-  # 
-  #   birth_date <- format(as.Date(dataK$year[2]-dataK$age[2],
-  #                 origin = "1960-1-1"), "%m-%d")
-  #   # year_date <- format(as.Date(dataK$year[2], origin = "1960-1-1"), "%m-%d")
-  # 
-  #   this_birthday <- as.Date(paste0(as.numeric(format(as.Date(dataK$year[2],
-  #                                 origin = "1960-1-1"), "%Y")),
-  #                                 paste0("-",birth_date)))
-  # 
-  #   next_year_date <- as.Date(paste0(as.numeric(format(as.Date(dataK$year[2],
-  #                                 origin = "1960-1-1"),"%Y")) + 1, "-01-01"))
-  # 
-  #   if(this_birthday>as.Date(dataK$year[2], origin = "1960-1-1")){
-  #     as.numeric(difftime(next_year_date, this_birthday, units = "days"))}
-  #   if(this_birthday<as.Date(dataK$year[2], origin = "1960-1-1")){}
-  # 
-  # 
-  # }
+  if(method == "table"){
+
+    birth_date <- format(as.Date(dataK$year-dataK$age,
+                  origin = "1960-1-1"), "%m-%d")
+
+    this_birthday <- as.Date(paste0(as.numeric(format(as.Date(dataK$year,
+                                  origin = "1960-01-01"), "%Y")),
+                                  paste0("-",birth_date)))
+
+    next_year_date <- as.Date(paste0(as.numeric(format(as.Date(dataK$year,
+                                  origin = "1960-01-01"),"%Y")) + 1, "-01-01"))
+
+    ##premiere partie, si l'anniversaire arrive en premier après la date de diag
+    # if(this_birthday>as.Date(dataK$year[2], origin = "1960-1-1")){}
+    process_dates <- function(test_bday, test_next, end_date) {
+      bdays <- c()
+      new_years <- c()
+      y10 = as.numeric(difftime("1970-01-01","1960-01-01"))
+      
+      while (test_bday <= end_date | test_next <= end_date) {
+        if (test_bday <= end_date) {
+          bdays <- c(bdays, test_bday)
+          test_bday <- test_bday + years(1)
+        }
+        if (test_next <= end_date) {
+          new_years <- c(new_years, test_next)
+          test_next <- test_next + years(1)
+        }
+      }
+      
+      return(list(birthdays = bdays+y10, new_years = new_years+y10))
+    }
+    
+    results_list <- list()
+    delta <- list()
+    # Loop over each pair of dates in the vectors
+    test_next = next_year_date
+    test_bday = this_birthday
+  
+    for (i in seq_along(test_bday)) {
+      test_b <- test_bday[i]
+      test_n <- test_next[i]
+      end_date <- as.Date(dataK$year[i] + time)
+      
+      result <- process_dates(test_b, test_n, end_date)
+      results_list[[i]] <- result
+      results_list[[i]] <- c(as.Date(dataK$year[i]),as.Date(sort(c(results_list[[i]]$birthdays,
+                          results_list[[i]]$new_years, end_date+ as.numeric(difftime("1970-01-01","1960-01-01")) )), origin = "1960-01-01"))
+      delta[[i]] <- as.numeric(difftime(results_list[[i]][-1], 
+                             results_list[[i]][-length(results_list[[i]])], units = "days"))
+    }
+    
+    
+    
+    ## deuxieme partie de la fonction
+    if(this_birthday<as.Date(dataK$year[2], origin = "1960-1-1")){}
+    
+  }
 }
+

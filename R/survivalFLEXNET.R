@@ -1,6 +1,7 @@
 
 survivalFLEXNET <- function(formula, data, ratetable, age, year, sex,
-                        m=3, mpos = NULL, strata=NULL, weights=NULL)
+                            m=3, mpos = NULL, strata=NULL, weights=NULL,
+                            timevar = NULL)
 {
   
   ####### check errors
@@ -15,7 +16,7 @@ survivalFLEXNET <- function(formula, data, ratetable, age, year, sex,
   if (as.character(class(data)) != "data.frame") stop("The second argument must be a data frame")
   if (length(dim(ratetable))!=3) stop("The life table must have 3 dimensions: age, year, sex")
   if (dim(ratetable)[3]!=2) stop("The life table must have 3 dimensions: age, year, sex")
-
+  
   ####### data management
   
   time <- data[,as.character(formula[[2]][2])] # Thomas: test initial une unite en jours comme relsurv
@@ -44,81 +45,166 @@ survivalFLEXNET <- function(formula, data, ratetable, age, year, sex,
   
   ###### Compute the expected mortality of individuals
   
-   #hP <- expectedhaz(ratetable, age=age, sex=sex, year=year, time=time) # compute instantaneous hazards
-   
+  #hP <- expectedhaz(ratetable, age=age, sex=sex, year=year, time=time) # compute instantaneous hazards
+  
   hP <- sapply(seq_along(time), function(i) {
     expectedhaz(ratetable = ratetable, age = age[i], sex = sex[i], year = year[i], time = time[i])
   })
-   
-   ###### log likelihood functions
-   
-   
-  logll1 <- function(beta, gamma, time, event, cova, hP, m, mpos){
-   return(-1*sum(
-     event * log(hP + (1/time)*splinecubeP(time, gamma, m, mpos)$spln *
-                 exp(splinecube(time, gamma, m)$spln + cova %*% beta) ) -
-       exp(splinecube(time, gamma, m)$spln + cova %*% beta)
-   )) }
-   
-  logll0 <- function(gamma, time, event, cova, hP, m, mpos){
-     return(-1*sum(
-       event * log(hP + (1/time)*splinecubeP(time, gamma, m, mpos)$spln *
-                     exp(splinecube(time, gamma, m)$spln) ) -
-         exp(splinecube(time, gamma, m)$spln)
-     )) }
-   
-  if(m == 0){gamma_names = NULL
-  }else{gamma_names <- paste0("gamma", 2:(m+1))}
-   
-  label <- c(gsub("\\+", "", attr(terms(formula), "term.labels")), "gamma0",
+  
+  ###### log likelihood functions
+  
+  if(is.null(timevar)){
+    
+    logll1 <- function(beta, gamma, time, event, cova, hP, m, mpos){
+      return(-1*sum(
+        event * log(hP + (1/time)*splinecubeP(time, gamma, m, mpos)$spln *
+                      exp(splinecube(time, gamma, m)$spln + cova %*% beta) ) -
+          exp(splinecube(time, gamma, m)$spln + cova %*% beta)
+      )) }
+    
+    logll0 <- function(gamma, time, event, cova, hP, m, mpos){
+      return(-1*sum(
+        event * log(hP + (1/time)*splinecubeP(time, gamma, m, mpos)$spln *
+                      exp(splinecube(time, gamma, m)$spln) ) -
+          exp(splinecube(time, gamma, m)$spln)
+      )) }
+    
+    if(m == 0){gamma_names = NULL
+    }else{gamma_names <- paste0("gamma", 2:(m+1))}
+    
+    label <- c(gsub("\\+", "", attr(terms(formula), "term.labels")), "gamma0",
                "gamma1", gamma_names)
-   
-  init1 <- c(rep(0,dim(cova)[2]+m+2))
-     
-  loglik1 <- function(par, time, event, cova, hP, m, mpos){
-       beta <- par[1:dim(cova)[2]]
-       gamma <- par[(dim(cova)[2]+1):length(par)]
-       return(logll1(beta, gamma, time, event, cova, hP, m, mpos)) }
-     
-  init0 <- rep(0,m+2)
-     
-  loglik0 <- function(par, time, event, cova, hP, m, mpos){
-       gamma <- par
-       return(logll0(gamma, time, event, cova, hP, m, mpos)) }
-
-   
-  logllmax0 <- optim(par = init0, fn = loglik0, time = time, event = event,
-                      hP = hP, m = m, mpos = mpos)
-   
-  indic <- 0
-  while(indic <= 5){
-     ll_val <- logllmax0$value
-     logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
-                        event = event, hP = hP, m = m, mpos = mpos)
-     delta <- ll_val - logllmax0$value
-     if(delta ==0) {indic = indic + 1}
-  }
-   
-  logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
-                      event = event, cova = cova, hP = hP, hessian = TRUE,
-                      m = m, mpos = mpos)
-   
-  logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
-                     cova = cova, hP = hP, m = m, mpos = mpos)
-   
-  indic <- 0
-  while(indic <= 5){
-    ll_val <- logllmax1$value
+    
+    init1 <- c(rep(0,dim(cova)[2]+m+2))
+    
+    loglik1 <- function(par, time, event, cova, hP, m, mpos){
+      beta <- par[1:dim(cova)[2]]
+      gamma <- par[(dim(cova)[2]+1):length(par)]
+      return(logll1(beta, gamma, time, event, cova, hP, m, mpos)) }
+    
+    init0 <- rep(0,m+2)
+    
+    loglik0 <- function(par, time, event, cova, hP, m, mpos){
+      gamma <- par
+      return(logll0(gamma, time, event, cova, hP, m, mpos)) }
+    
+    
+    logllmax0 <- optim(par = init0, fn = loglik0, time = time, event = event,
+                       hP = hP, m = m, mpos = mpos)
+    
+    indic <- 0
+    while(indic <= 5){
+      ll_val <- logllmax0$value
+      logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
+                         event = event, hP = hP, m = m, mpos = mpos)
+      delta <- ll_val - logllmax0$value
+      if(delta ==0) {indic = indic + 1}
+    }
+    
+    logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
+                       event = event, cova = cova, hP = hP, hessian = TRUE,
+                       m = m, mpos = mpos)
+    
+    logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
+                       cova = cova, hP = hP, m = m, mpos = mpos)
+    
+    indic <- 0
+    while(indic <= 5){
+      ll_val <- logllmax1$value
+      logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
+                         event = event, cova = cova, hP = hP, m = m, mpos = mpos)
+      delta <- ll_val - logllmax1$value
+      if(delta ==0) {indic = indic + 1}
+    }
+    
     logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
-                       event = event, cova = cova, hP = hP, m = m, mpos = mpos)
-    delta <- ll_val - logllmax1$value
-    if(delta ==0) {indic = indic + 1}
+                       event = event, cova = cova, hP = hP, m = m, mpos = mpos,
+                       hessian = TRUE)
   }
   
-  logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
-                     event = event, cova = cova, hP = hP, m = m, mpos = mpos,
-                     hessian = TRUE)
-  
+  if(!is.null(timevar)){
+    logll1 <- function(beta, gamma1, gamma2, time, event, cova, covatime, hP, m, mpos){
+      return(-1*sum(
+        1*(covatime == 1) * (
+          event * log(hP + (1/time)*splinecubeP(time, gamma1, m, mpos)$spln *
+                        exp(splinecube(time, gamma1, m)$spln + cova %*% beta) ) -
+            exp(splinecube(time, gamma1, m)$spln + cova %*% beta)
+        ) +
+          1*(covatime == 0) * (
+            event * log(hP + (1/time)*splinecubeP(time, gamma2, m, mpos)$spln *
+                          exp(splinecube(time, gamma2, m)$spln + cova %*% beta) ) -
+              exp(splinecube(time, gamma2, m)$spln + cova %*% beta)
+          )
+      )
+      )
+    }
+    
+    logll0 <- function(gamma, time, event, cova, hP, m, mpos){
+      return(-1*sum(
+        event * log(hP + (1/time)*splinecubeP(time, gamma, m, mpos)$spln *
+                      exp(splinecube(time, gamma, m)$spln) ) -
+          exp(splinecube(time, gamma, m)$spln)
+      )) }
+    
+    if(m == 0){gamma1_names = NULL
+    gamma2_names = NULL
+    }else{gamma_names1 <- paste0("gamma1_", 2:(m+1))
+    gamma_names2 <- paste0("gamma2_", 2:(m+1))}
+    
+    label <- c(gsub("\\+", "", attr(terms(formula), "term.labels")), "gamma1_0",
+               "gamma1_1", gamma_names1, "gamma2_0", "gamma2_1", gamma_names2)
+    
+    init1 <- c(rep(0,dim(cova)[2]+2*m+4))
+    
+    loglik1 <- function(par, time, event, cova, covatime, hP, m, mpos){
+      beta <- par[1:dim(cova)[2]]
+      gamma1 <- par[(dim(cova)[2]+1):(dim(cova)[2]+m+2)]
+      gamma2 <- par[(dim(cova)[2]+m+3):(dim(cova)[2]+2*m+4)]
+      
+      return(logll1(beta, gamma1, gamma2, time, event, cova, covatime, hP, m, mpos)) }
+    
+    init0 <- rep(0,m+2)
+    
+    loglik0 <- function(par, time, event, cova, hP, m, mpos){
+      gamma <- par
+      return(logll0(gamma, time, event, cova, hP, m, mpos)) }
+    
+    
+    logllmax0 <- optim(par = init0, fn = loglik0, time = time, event = event,
+                       hP = hP, m = m, mpos = mpos)
+    
+    indic <- 0
+    while(indic <= 5){
+      ll_val <- logllmax0$value
+      logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
+                         event = event, hP = hP, m = m, mpos = mpos)
+      delta <- ll_val - logllmax0$value
+      if(delta ==0) {indic = indic + 1}
+    }
+    
+    logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
+                       event = event, cova = cova, hP = hP, hessian = TRUE,
+                       m = m, mpos = mpos)
+    
+    logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
+                       cova = cova, covatime = timevar, hP = hP, m = m, mpos = mpos)
+    
+    indic <- 0
+    while(indic <= 5){
+      ll_val <- logllmax1$value
+      logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
+                         event = event, cova = cova, covatime = timevar,
+                         hP = hP, m = m, mpos = mpos)
+      delta <- ll_val - logllmax1$value
+      if(delta ==0) {indic = indic + 1}
+    }
+    
+    logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
+                       event = event, cova = cova, covatime = timevar,
+                       hP = hP, m = m, mpos = mpos,
+                       hessian = TRUE)
+    
+  }
   t.table <- data.frame(coef = logllmax1$par,
                         ecoef = exp(logllmax1$par),
                         se = sqrt(diag(solve(logllmax1$hessian))),
@@ -153,9 +239,11 @@ survivalFLEXNET <- function(formula, data, ratetable, age, year, sex,
     m = m,
     mpos = mpos
   )
-  class(res) <- "survivalFLEXNET"
+  class(res) <- "survivalNET"
   return(res)
-  }
+}
+
+
 
 
 
