@@ -21,7 +21,7 @@ strata=NULL, weights=NULL)
 \item{sex}{The name of the column of the data frame with the genders: "male" or "female". The column must be a of the class 'character'.}
 \item{dist}{A character string listed in the following table to define the baseline hazard function. By default, the Weibull distribution is used.}
 \item{strata}{An optional argument indicating the strata for which separate baseline hazard functions are fit.}
-\item{weights}{A numeric vector with a weighted likelihood, i.e. different contributions of individuals. By default, the weights equal 1.}
+\item{weights}{A numeric vector for a weighted likelihood, i.e. different contributions of individuals. By default, the weights equal 1.}
 }
 
 \details{
