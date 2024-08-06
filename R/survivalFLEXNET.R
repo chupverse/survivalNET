@@ -29,17 +29,23 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
     return(vars)
   }
   assign_ratetable_vars <- function(vars) {
-    age <- sex <- year <- NULL
+    age <- year <- sex <- NULL
     for (var in vars) {
       if (grepl("age = ", var)) {
         age <- sub("age = ", "", var)
-      } else if (grepl("sex = ", var)) {
-        sex <- sub("sex = ", "", var)
       } else if (grepl("year = ", var)) {
         year <- sub("year = ", "", var)
+      } else if (grepl("sex = ", var)) {
+        sex <- sub("sex = ", "", var)
       }
     }
-    return(list(age = age, sex = sex, year = year))
+    unnamed_vars <- setdiff(vars, c(age, sex, year))
+    if (length(unnamed_vars) > 0) {
+      if (is.null(age) && length(unnamed_vars) >= 1) age <- unnamed_vars[1]
+      if (is.null(year) && length(unnamed_vars) >= 2) year <- unnamed_vars[2]
+      if (is.null(sex) && length(unnamed_vars) >= 3) sex <- unnamed_vars[3]
+    }
+    return(list(age = age, year = year, sex = sex))
   }
   if(is.null(unlist(lapply(strata_terms, extract_vars)))){
     timevar = unlist(lapply(strata_terms, extract_vars))
