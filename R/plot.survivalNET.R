@@ -8,7 +8,7 @@ plot.survivalNET <- function(x, n.groups=5, pro.time=NULL, newdata=NULL,
     {
     cova <-data.frame(x$x)
     time <- x$y[,1];  event <- x$y[,2]
-    .age <- x$asy$age; .sex <- x$asy$sex; .year <- x$asy$year
+    .age <- x$ays$age; .year <- x$ays$year; .sex <- x$ays$sex
     }
   
   if(!is.null(newdata))

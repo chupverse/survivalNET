@@ -26,11 +26,15 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
   event <- data[,as.character(formula[[2]][3])]
   all_terms <- attr(terms(formula), "term.labels")
   strata_terms <- grep("strata\\(", all_terms, value = TRUE)
+  if(length(strata_terms)>1) stop("More than one 'strata' term found in  the formula. Only one variable at a time can be stratified")
   ratetable_terms <- grep("ratetable\\(", all_terms, value = TRUE)
   if(length(ratetable_terms) == 0) stop("Error: The formula must contain a ratetable() term.")
-  covnames <- setdiff(all_terms, c(strata_terms, ratetable_terms))
+  if(length(ratetable_terms)>1) stop("More than one 'ratetable' term found in  the formula.")
+  if(length(all_terms) ==1){covnames = "1"} else{covnames <- setdiff(all_terms, c(strata_terms, ratetable_terms))}
   label<- NULL
-  cova <- as.matrix(data[,covnames])
+  covs <- as.formula(paste("~", paste(covnames, collapse = " + ")))
+  cova <- model.matrix(covs, data)[, -1, drop = FALSE]
+  covnames <- colnames(cova)
   extract_vars <- function(term) {
     var_string <- sub("^[^\\(]+\\((.*)\\)$", "\\1", term)
     vars <- trimws(unlist(strsplit(var_string, ",")))
@@ -55,11 +59,19 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
     }
     return(list(age = age, sex = sex, year = year))
   }
-  if(is.null(unlist(lapply(strata_terms, extract_vars)))){
-    timevar = unlist(lapply(strata_terms, extract_vars))
+  strata_var = unlist(lapply(strata_terms, extract_vars))
+  
+  if(!is.null(strata_var) && strata_var %in% covnames) stop("The stratified covariate also appears as a covariate in the formula.")
+  
+  if(is.null(strata_var)){
+    timevar = strata_var
+    xlevels = NULL
   }
-  if(!is.null(unlist(lapply(strata_terms, extract_vars)))){
-    timevar <- data[,unlist(lapply(strata_terms, extract_vars))]}
+  if(!is.null(strata_var)){
+    timevar <- data[,strata_var]
+    xlevels <- list(levels(as.factor(timevar)))
+    names(xlevels) <- c(strata_var)
+  }
   if(!is.null(timevar)){
     if(length(unique(timevar))>15) stop("The variable with a time-dependant effect has too many categories (>15)")
   }
@@ -74,7 +86,6 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
   if(!is.character(sex)) stop("'sex' must be a character string")
   if(min(names(table(sex)) %in% c("female","male", NA))==0) stop("Argument 'sex' must be 'male' or 'female'")
   if(!is.date(year)) stop("The values for 'year' must be of the 'date' class")
-   for(i in colnames(cova)){ if(!is.numeric(cova[,i])) stop("All covariates must be numeric")  }
   if(!is.null(weights)){
     if(!is.numeric(weights)) stop("Argument 'weights' must be a numeric vector")
       if(length(weights)!=dim(data)[1]) stop("Argument 'weights' must have the same length as the number of rows of the 'data' argument. (", dim(data)[1],")")}
@@ -226,7 +237,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
       for (i in timevarnames) {
         label <- c(label, get(paste0("param_names", i)))}
       
-      
+      suppressWarnings({
       logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
                          cova = cova, covatime = timevarnum, hP = hP, w = weights
                          , K= K)
@@ -245,7 +256,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
                          event = event, cova = cova, covatime = timevarnum,
                          hP = hP, w = weights, K= K,
                          hessian = TRUE)
-    
+      })
     }
     
   }
@@ -299,7 +310,8 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
      lower <- -2500
      upper <-  2500
    }
-   
+    suppressWarnings({
+      
    logllmax0 <- optim(par = init0, fn = loglik0, time = time, event = event,
                       hP = hP, w = weights, method = method, lower = lower,
                       upper = upper)
@@ -318,10 +330,10 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
                       event = event, cova = cova, hP = hP, w = weights,
                       hessian = TRUE, method = method, lower = lower,
                       upper = upper)
-   
+    })
    if (length(covnames) != 0 & is.null(timevar)){
      
-     
+     suppressWarnings({
      logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
                        cova = cova, hP = hP, w = weights)
      
@@ -336,6 +348,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
     
     logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, event = event,
                       cova = cova, hP = hP, , w = weights, hessian = TRUE)
+     })
    }
    
    if (length(covnames) != 0){
@@ -362,14 +375,14 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
   coefficients <- t.table$coef
   names(coefficients) <- label
   
-  betaestim <- coefficients[names(coefficients) %in% covnames]
+  betaestim <- coefficients[covnames]
   lp <- cova %*% betaestim
   
   dimnames(cova)[[2]] <- covnames
   
-  var = if (length(covnames) != 0){solve(logllmax1$hessian)
+  var <- if (length(covnames) != 0){solve(logllmax1$hessian)
   }else{solve(logllmax0$hessian)}
-  loglik = if (length(covnames) != 0){c(-1*logllmax1$value, -1*logllmax0$value)
+  loglik <- if (length(covnames) != 0){c(-1*logllmax1$value, -1*logllmax0$value)
   }else{-1*logllmax0$value}
     
   res <- list(
@@ -385,9 +398,12 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
     nevent = sum(event),
     y = cbind(time = time, status = event),
     x = cova,
-    asy = data.frame(age = age, sex = sex, year = year),
+    ays = data.frame(age = age, year = year, sex = sex),
     call = call
   )
+  if (!is.null(xlevels)) {
+    res$xlevels <- xlevels
+  }
   class(res) <- "survivalNET"
   return(res)
   }

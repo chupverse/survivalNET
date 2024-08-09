@@ -13,19 +13,21 @@ strata=NULL, weights=NULL)
 }
 
 \arguments{
-\item{formula}{a formula object, with the response on the left of a ~ operator, and the terms on the right. The response must be a survival object as returned by the \code{Surv} function.}
+\item{formula}{a formula object, with the response on the left of a ~ operator, and the terms on the right. The response must be a survival object as returned by the \code{Surv} function. On the right side, it is necessary to specify a '+\code{ratetable}(age = age, year = year, sex = sex)' term.}
 \item{data}{A data frame in which to look for the variables included in the \code{formula}.}
 \item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for the mortality of the French population, i.e. an array with three dimensions: age, sex and year.}
-\item{age}{The name of the column of the data base with the patient age at baseline in days. The column values must be numeric.}
-\item{year}{The name of the column with the baseline date in the study respecting the date format: number of days since 01.01.1960. The column values must be of the class 'date'. Use \code{as.date()} to change your numeric values to date values.}
-\item{sex}{The name of the column of the data frame with the genders: "male" or "female". The column must be a of the class 'character'.}
 \item{dist}{A character string listed in the following table to define the baseline hazard function. By default, the Weibull distribution is used.}
-\item{strata}{An optional argument indicating the strata for which separate baseline hazard functions are fit.}
 \item{weights}{A numeric vector for a weighted likelihood, i.e. different contributions of individuals. By default, the weights equal 1.}
 }
 
 \details{
-The following hazard functions available are:
+NOTE : For the ratetable, \code{age} at baseline must be in days, \code{year}, the baseline date in the study, must be of class 'date' under the date format: number of days since 01.01.1960 and \code{sex} must be of class 'character' with genders : 'male' or 'female'. 
+\cr
+\cr
+It is possible to stratify on a categorical covariate by adding a '+\code{strata}(timevar)' term on the right side of the formula.
+\cr
+\cr
+The following hazard functions available are:   
 \tabular{rrl}{
 exponential \tab Exponential distribution \tab \eqn{\lambda(t)=1/\sigma} \cr											
 weibull \tab Weibull distribution \tab \eqn{\lambda(t)=\nu(\frac{1}{\sigma})^{\nu}t^{\nu-1}} \cr
@@ -40,14 +42,15 @@ with \eqn{\sigma}, \eqn{\nu},and \eqn{\theta>0}.
 \item{coefficients}{A vector with the regression coefficients of the excess hazard.}
 \item{var}{The variance-covariance matrix of the regression \code{coefficients}.}
 \item{t.table}{A data frame with the estimates, the standard deviations, Wald statistics, and p-values.}
-\item{loglik}{A vector of length 2 containing the log-likelihood of the model without and with the covariates.}
+\item{loglik}{A vector containing the log-likelihood of the model without and with covariates.}
 \item{linear.predictors}{A vector with the linear predictor of the included individuals.}
 \item{missing}{A vector of logical values indication whether individuals are included or excluded because of missing data.}
 \item{n}{The number of individuals used in the fit.}
 \item{nevent}{The number of events used in the fit.}
 \item{y}{A matrix with two columns with the observed outcomes: \code{time} and \code{status}.}
 \item{x}{A matrix with the observed covariates.}
-\item{asy}{A data frame with age, gender, and birthyear of individuals}
+\item{ays}{A data frame with age, birthyear of individuals and gender.}
+\item{call}{Return the call with the specified arguments of the functon.}
 }
 
 \references{
@@ -68,9 +71,8 @@ plot(PPest)
 
 # The parametric estimation of the net survival curves (Weibull distribution)
 
-sNET <- survivalNET(Surv(time, event) ~ stade + delay, data = dataK, ratetable=fr.ratetable,
-                     age="age", sex="sexchara", year="year", dist="weibull",
-                     strata=NULL, weights=NULL)
+sNET <- survivalNET(Surv(time, event) ~ stade + delay + ratetable(age = age, year = year,                            sex = sexchara), data = dataK, ratetable=fr.ratetable,
+                         dist="weibull",weights=NULL)
 
 sNET.pred <- predict(sNET, newdata=data.frame( stade=c(0,0,1,1), delay=c(0,1,0,1) ) )
 

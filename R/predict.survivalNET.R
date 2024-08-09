@@ -7,21 +7,34 @@ if(is.null(newtimes))  { newtimes <- 0:max(object$y[,1]) }
 if(!is.null(newdata))
   {
     if(!is.data.frame(newdata)) stop("Argument 'newdata' must be a data frame")
-    indic <- gsub("\\+", "", attr(terms(object$formula), "term.labels") ) %in% names(newdata) 
+  
+    covnames <- names(as.data.frame(sNET$x))
+    if ("xlevels" %in% names(object)) {
+      covnames <- c(covnames, names(object$xlevels)) 
+    }
+  
+    indic <- covnames %in% names(newdata) 
     if( sum(!indic) > 0 ) stop("Missing predictor in the data frame")
-    covariates <- as.matrix(newdata[, gsub("\\+", "", attr(terms(object$formula), "term.labels"))])
+    covariates <- as.matrix(newdata[,covnames])
     
     if(type=="overall"){
       if(is.null(ratetable))stop("For overall survival, the 'ratetable' argument is necessary.")
-      age = object$call$age
-      year = object$call$year
-      sex = object$call$sex
-      indic <- c(age,year,sex, gsub("\\+", "", attr(terms(object$formula), 
-                    "term.labels") ) ) %in% names(newdata)
+      all_terms = attr(terms(object$formula), "term.labels")
+      ratetable_terms <- grep("ratetable\\(", all_terms, value = TRUE)
+      extract_vars <- function(term) {
+        var_string <- sub("^[^\\(]+\\((.*)\\)$", "\\1", term)
+        vars <- trimws(unlist(strsplit(var_string, ",")))
+        return(vars)
+      }
+      ratetable_vars <- assign_ratetable_vars(unlist(lapply(ratetable_terms, extract_vars_within_function)))
+      age = ratetable_vars$age
+      year = ratetable_vars$year
+      sex = ratetable_vars$sex
+      indic <- c(age,year,sex, covnames)  %in% names(newdata) 
       if( sum(!indic) > 0 ) stop("Missing predictor in the data frame.
                                  For overall suvival, newdata also needs
                                  'age', 'sex' and 'year' for the ratetable")
-      covariates <- as.matrix(newdata[, gsub("\\+", "", attr(terms(object$formula), "term.labels"))])
+      # covariates <- as.matrix(newdata[, covnames]) déja présent à la ligne 18 j'ai l'impression
       
     }
      }
@@ -30,37 +43,59 @@ if(is.null(newdata))  {
   if(type=="overall"){
     
   if(is.null(ratetable))stop("For overall survival, the 'ratetable' argument is necessary.")
-  age = object$asy$age
-  year = object$asy$year
-  sex = object$asy$sex
+  age = object$ays$age
+  year = object$ays$year
+  sex = object$ays$sex
   }
-  covariates <- object$x  }
+  covariates <- object$x  ##rajouter strata
+  }
   
   
+  ### dist NET
+  
+  if ("dist" %in% names(object)) {
 if(object$dist=="genweibull")  {
-    sigma <- exp(object$coefficients[1])
-    nu <- exp(object$coefficients[2])
-    theta <- exp(object$coefficients[3])
-    beta <- object$coefficients[4:(3+dim(object$x)[2])]
+    beta <- object$coefficients[1:(dim(object$x)[2])]
+    sigma <- exp(object$coefficients[(dim(object$x)[2])+1])
+    nu <- exp(object$coefficients[(dim(object$x)[2])+2])
+    theta <- exp(object$coefficients[(dim(object$x)[2])+3])
     }
   
 if(object$dist=="weibull")  {
-    sigma <- exp(object$coefficients[1])
-    nu <- exp(object$coefficients[2])
-    theta <- 1
-    beta <- object$coefficients[3:(2+dim(object$x)[2])]
+  beta <- object$coefficients[1:(dim(object$x)[2])]
+  sigma <- exp(object$coefficients[(dim(object$x)[2])+1])
+  nu <- exp(object$coefficients[(dim(object$x)[2])+2])
+  theta <- 1
     }
   
 if(object$dist=="exponential")  {
-    sigma <- exp(object$coefficients[1])
-    nu <- 1
-    theta <- 1
-    beta <- object$coefficients[2:(1+dim(object$x)[2])]
+  beta <- object$coefficients[1:(dim(object$x)[2])]
+  sigma <- exp(object$coefficients[(dim(object$x)[2])+1])
+  nu <- 1
+  theta <- 1
     }
+  }
+  
+  ## m FLEXNET
+  
+  if("m" %in% names(object)){
+    beta <- object$coefficients[1:(dim(object$x)[2])]
+    gamma <- object$coefficients[(dim(object$x)[2]+1):(dim(object$t.table)[1])]
+    m = object$m
+    mpos = object$mpos
+  }
+  
+  ### type 
   
 if(type=="relative") {
+  if ("dist" %in% names(object)) {
   fun <- function(x) { exp( exp(covariates%*%beta)*(1-(1+(x/sigma)^nu)^(1/theta)) ) }
   }
+  if("m" %in% names(object)){
+  fun <- function(x) { exp( -1*exp(splinecube(x, gamma, m, mpos)$spln)*exp(covariates%*%beta))}
+  }
+  
+}
   
 if(type=="lp") {
   fun <- function(x) { covariates %*% beta }
@@ -77,7 +112,14 @@ if(type=="overall"){
     })
   }
 }
-predictions <- sapply(newtimes, FUN = "fun")
+  
+  ###predictions 
+  if ("dist" %in% names(object)) {
+ predictions <- sapply(newtimes, FUN = "fun")
+  }
+  if ("m" %in% names(object)) {
+ predictions <- fun(newtimes)
+    }
 
 return(list(times=newtimes, predictions=predictions))
 }

@@ -19,10 +19,15 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
   event <- data[,as.character(formula[[2]][3])]
   all_terms <- attr(terms(formula), "term.labels")
   strata_terms <- grep("strata\\(", all_terms, value = TRUE)
+  if(length(strata_terms)>1) stop("More than one 'strata' term found in  the formula. Only one variable at a time can be stratified")
   ratetable_terms <- grep("ratetable\\(", all_terms, value = TRUE)
   if(length(ratetable_terms) == 0) stop("Error: The formula must contain a ratetable() term.")
-  covnames <- setdiff(all_terms, c(strata_terms, ratetable_terms))
-  cova <- as.matrix(data[,covnames])
+  if(length(ratetable_terms)>1) stop("More than one 'ratetable' term found in  the formula.")
+  if(length(all_terms) ==1){covnames = "1"} else{covnames <- setdiff(all_terms, c(strata_terms, ratetable_terms))}
+  label<- NULL
+  covs <- as.formula(paste("~", paste(covnames, collapse = " + ")))
+  cova <- model.matrix(covs, data)[, -1, drop = FALSE]
+  covnames <- colnames(cova)
   extract_vars <- function(term) {
     var_string <- sub("^[^\\(]+\\((.*)\\)$", "\\1", term)
     vars <- trimws(unlist(strsplit(var_string, ",")))
@@ -47,11 +52,16 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
     }
     return(list(age = age, year = year, sex = sex))
   }
-  if(is.null(unlist(lapply(strata_terms, extract_vars)))){
-    timevar = unlist(lapply(strata_terms, extract_vars))
+  strata_var = unlist(lapply(strata_terms, extract_vars))
+  if(!is.null(strata_var) && strata_var %in% covnames) stop("The stratified covariate also appears as a covariate in the formula.")
+  if(is.null(strata_var)){
+    timevar = strata_var
   }
-  if(!is.null(unlist(lapply(strata_terms, extract_vars)))){
-  timevar <- data[,unlist(lapply(strata_terms, extract_vars))]}
+  if(!is.null(strata_var)){
+    timevar <- data[,strata_var]
+    xlevels <- list(levels(as.factor(timevar)))
+    names(xlevels) <- c(strata_var)
+    }
   if(!is.null(timevar)){
     if(length(unique(timevar))>15) stop("The variable with a time-dependant effect has too many categories (>15)")
   }
@@ -66,7 +76,6 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
   if(!is.character(sex)) stop("'sex' must be a character string")
   if(min(names(table(sex)) %in% c("female","male", NA))==0) stop("'sex' must be 'male' or 'female'")
   if(!is.date(year)) stop("The values for 'year' must be of the 'date' class")
-  for(i in colnames(cova)){ if(!is.numeric(cova[,i])) stop("All covariates must be numeric")  }
   if(!is.null(weights)){
     if(!is.numeric(weights)) stop("Argument 'weights' must be a numeric vector")
     if(length(weights)!=dim(data)[1]) stop("Argument 'weights' must have the same length as the number of rows of the 'data' argument. (", dim(data)[1],")")}
@@ -91,6 +100,8 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
   
   ###### log likelihood functions
   
+  if (length(covnames) != 0){
+  
   if(is.null(timevar)){
     
     logll1 <- function(beta, gamma, time, event, cova, hP, w, m, mpos){
@@ -100,12 +111,6 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
           exp(splinecube(time, gamma, m)$spln + cova %*% beta)
       ) ) ) }
     
-    if(m == 0){gamma_names = NULL
-    }else{gamma_names <- paste0("gamma", 2:(m+1))}
-    
-    label <- c(covnames, "gamma0",
-               "gamma1", gamma_names)
-    
     init1 <- c(rep(0,dim(cova)[2]+m+2))
     
     loglik1 <- function(par, time, event, cova, hP, w, m, mpos){
@@ -113,7 +118,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
       gamma <- par[(dim(cova)[2]+1):length(par)]
       return(logll1(beta, gamma, time, event, cova, hP, w, m, mpos)) }
     
-    
+    suppressWarnings({
     logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
                        cova = cova, hP = hP, w = weights, m = m, mpos = mpos)
     
@@ -131,6 +136,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
                        event = event, cova = cova, hP = hP, w = weights,
                        m = m, mpos = mpos,
                        hessian = TRUE)
+    })
   }
   
   if(!is.null(timevar)){
@@ -184,7 +190,8 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
       gamma <-matrix(par[(dim(cova)[2]+1):(dim(cova)[2]+(length(K)*(m+2)))], ncol = length(K))
       
       return(logll1(beta, gamma, time, event, cova, covatime, hP, w, m, mpos, K)) }
-
+    
+    suppressWarnings({
     logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
                        cova = cova, covatime = timevarnum, hP = hP, w = weights
                        , m = m, mpos = mpos, K= K)
@@ -203,9 +210,10 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
                        event = event, cova = cova, covatime = timevarnum,
                        hP = hP, w = weights, m = m, mpos = mpos, K= K,
                        hessian = TRUE)
-    
+    })
   }
   
+  }
   #NULL model
   logll0 <- function(gamma, time, event, cova, hP, w, m, mpos){
     return(-1*sum(w*(
@@ -216,13 +224,19 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
     ) 
     }
   
+  if(m == 0){gamma_names = NULL
+  }else{gamma_names <- paste0("gamma", 2:(m+1))}
+  
+  label <- c(covnames, "gamma0",
+             "gamma1", gamma_names)
   init0 <- rep(0,m+2)
   
   loglik0 <- function(par, time, event, cova, hP, w, m, mpos){
     gamma <- par
     return(logll0(gamma, time, event, cova, hP, w, m, mpos)) }
   
-  
+  suppressWarnings({
+    
   logllmax0 <- optim(par = init0, fn = loglik0, time = time, event = event,
                      hP = hP, w = weights, m = m, mpos = mpos)
   
@@ -238,42 +252,60 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
   logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
                      event = event, cova = cova, hP = hP, w = weights, 
                      hessian = TRUE, m = m, mpos = mpos)
+  })
   
-  
-  t.table <- data.frame(coef = logllmax1$par,
-                        ecoef = exp(logllmax1$par),
-                        se = sqrt(diag(solve(logllmax1$hessian))),
-                        z = logllmax1$par/sqrt(diag(solve(logllmax1$hessian))),
-                        p = 2*(1-pnorm(abs(logllmax1$par/sqrt(diag(solve(logllmax1$hessian)))), 0, 1)),
-                        row.names = label)
+  if (length(covnames) != 0){
+    
+    t.table <- data.frame(coef = logllmax1$par,
+                          ecoef = exp(logllmax1$par),
+                          se = sqrt(diag(solve(logllmax1$hessian))),
+                          z = logllmax1$par/sqrt(diag(solve(logllmax1$hessian))),
+                          p = 2*(1-pnorm(abs(logllmax1$par/sqrt(diag(solve(logllmax1$hessian)))), 0, 1)),
+                          row.names = label)
+  }else{
+    
+    t.table <- data.frame(coef = logllmax0$par,
+                          ecoef = exp(logllmax0$par),
+                          se = sqrt(diag(solve(logllmax0$hessian))),
+                          z = logllmax0$par/sqrt(diag(solve(logllmax0$hessian))),
+                          p = 2*(1-pnorm(abs(logllmax0$par/sqrt(diag(solve(logllmax0$hessian)))), 0, 1)),
+                          row.names = label)
+  }
   
   names(t.table) <- c("coef", "exp(coef)", "se(coef)", "z", "p")
   
   coefficients <- t.table$coef
   names(coefficients) <- label
   
-  betaestim <- coefficients[names(coefficients) %in% gsub("\\+", "", attr(terms(formula), "term.labels"))]
+  betaestim <- coefficients[covnames]
   lp <- cova %*% betaestim
   
   dimnames(cova)[[2]] <- covnames
   
+  var <- if (length(covnames) != 0){solve(logllmax1$hessian)
+  }else{solve(logllmax0$hessian)}
+  loglik <- if (length(covnames) != 0){c(-1*logllmax1$value, -1*logllmax0$value)
+  }else{-1*logllmax0$value}
+  
   res <- list(
     formula = formula,
-    dist = dist,
     coefficients =  coefficients,
-    var = solve(logllmax1$hessian),
+    var = var,
     t.table = t.table,
-    loglik = c(-1*logllmax1$value, -1*logllmax0$value),
+    loglik = loglik,
     linear.predictors = as.vector(lp),
     missing = !na,
     n = length(time),
     nevent = sum(event),
     y = cbind(time = time, status = event),
     x = cova,
-    asy = data.frame(age = age, sex = sex, year = year),
+    ays = data.frame(age = age, year = year, sex = sex),
     m = m,
     mpos = mpos
   )
+  if (!is.null(xlevels)) {
+    res$xlevels <- xlevels
+  }
   class(res) <- "survivalNET"
   return(res)
 }

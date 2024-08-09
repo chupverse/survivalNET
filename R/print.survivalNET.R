@@ -3,7 +3,7 @@ print.survivalNET <- function (x, digits=4, ...)
 {
   print(round(x$t.table, digits = digits))
   
-  if (length( attr( terms(x$formula), "term.labels")) != 0){
+  if (length( attr( terms(x$formula), "term.labels")) != 1){
   lrs <- 2 * (x$loglik[1] - x$loglik[2])
   df <- length(gsub("\\+", "", attr(terms(x$formula), "term.labels")))
   pv <- 1 - pchisq(q=lrs, df=df)
