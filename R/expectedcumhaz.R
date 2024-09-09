@@ -28,6 +28,7 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
     
     return(integrateA(Vectorize(.f), lower=0, upper=time, subdivisions = subdivisions)$value)
   }
+  
   ### en développement
   if(method == "table"){
 

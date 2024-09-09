@@ -30,7 +30,8 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
   ratetable_terms <- grep("ratetable\\(", all_terms, value = TRUE)
   if(length(ratetable_terms) == 0) stop("Error: The formula must contain a ratetable() term.")
   if(length(ratetable_terms)>1) stop("More than one 'ratetable' term found in  the formula.")
-  if(length(all_terms) ==1){covnames = "1"} else{covnames <- setdiff(all_terms, c(strata_terms, ratetable_terms))}
+  CV <- setdiff(all_terms, c(strata_terms, ratetable_terms))
+  if(length(CV) == 0){covnames = "1"} else{covnames <- CV}
   label<- NULL
   covs <- as.formula(paste("~", paste(covnames, collapse = " + ")))
   cova <- model.matrix(covs, data)[, -1, drop = FALSE]
@@ -76,7 +77,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
     if(length(unique(timevar))>15) stop("The variable with a time-dependant effect has too many categories (>15)")
   }
   ratetable_vars <- assign_ratetable_vars(unlist(lapply(ratetable_terms, extract_vars_within_function)))
-  age <- data[,ratetable_vars$age] # Thomas: test initial une unite en jours 
+  age <- data[,ratetable_vars$age] 
   year <- data[,ratetable_vars$year]
   sex <- data[,ratetable_vars$sex] 
   if(is.null(weights)){weights = rep(1,dim(data)[1])}
@@ -102,15 +103,13 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
   
   ###### Compute the expected mortality of individuals
   
-   #hP <- expectedhaz(ratetable, age=age, sex=sex, year=year, time=time) # compute instantaneous hazards
-   
   hP <- sapply(seq_along(time), function(i) {
     expectedhaz(ratetable = ratetable, age = age[i], sex = sex[i], year = year[i], time = time[i])
   })
    
    ###### log likelihood functions
 
-  if (length(covnames) != 0){
+  if (!is.null(covnames)){
     
     if(is.null(timevar)){
     
@@ -200,6 +199,11 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
           theta <- exp(par[(dimC+2*length(K)+1):(dimC+3*length(K))])  
           return(logll1(sigma, nu, theta, beta, time, event, cova, covatime, hP, w, K)) }
         
+        label <- covnames
+        for (j in 1:3){
+          for (i in timevarnames) {
+            label <- c(label, get(paste0("param_names", i))[j] ) }
+        }
       }
       
       if (dist=="weibull"){
@@ -216,7 +220,13 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
           theta <- rep(1,length(K)) 
           return(logll1(sigma, nu, theta, beta, time, event, cova, covatime, hP, w,K)) }
         
-      }
+        label <- covnames
+        for (j in 1:2){
+          for (i in timevarnames) {
+            label <- c(label, get(paste0("param_names", i))[j] ) }
+        }
+        }
+        
       
       if (dist=="exponential"){
         for (i in timevarnames){
@@ -231,11 +241,14 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
           nu <- rep(1,length(K))
           theta <- rep(1,length(K))  
           return(logll1(sigma, nu, theta, beta, time, event, cova, covatime, hP, w, K)) }
-      }
       
-      label <- covnames
-      for (i in timevarnames) {
-        label <- c(label, get(paste0("param_names", i)))}
+        label <- covnames
+        for (i in timevarnames) {
+          label <- c(label, get(paste0("param_names", i)))}
+        
+        }
+      
+      
       
       suppressWarnings({
       logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
@@ -260,7 +273,117 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
     }
     
   }
+  
+  if (is.null(covnames) & !is.null(timevar)){
     
+    timevarnames <- sort(unique(timevar))
+    correstab <- setNames(seq_along(timevarnames), timevarnames)
+    
+    timevarnum <- as.numeric(correstab[as.character(timevar)])
+    
+    K = sort(unique(timevarnum))
+    
+    logll1 <- function(sigma, nu, theta, time, event, covatime, hP, w, K){
+      
+      value = 0
+      for(k in K){
+        sigmak <- sigma[k]
+        nuk <- nu[k]
+        thetak <- theta[k]
+        timek <- time[covatime == k]
+        eventk <- event[covatime == k]
+        hPk <- hP[covatime == k]
+        wk <- w[covatime == k]
+        value_strate <- -1*sum( wk*( eventk*log(hPk+ 
+          (1/thetak)*(1+(timek/sigmak)^nuk)^((1/thetak)-1)*(nuk/sigmak)*(timek/sigmak)^(nuk-1) )
+          + (1-(1+(timek/sigmak)^nuk)^(1/thetak)) ) )
+        value <- value +value_strate
+      }
+      return(value)
+      
+    }
+    
+    if (dist=="genweibull"){
+      for (i in timevarnames){
+        assign(paste0("param_names", i), c(paste0("log sigma_",i), paste0("log nu_",i), paste0("log theta_",i)))}
+      
+      init1 <- rep(0,3*length(K))
+      
+      loglik1 <- function(par, time, event, covatime, hP, w, K){
+    
+        sigma <- exp(par[1:length(K)])
+        nu <- exp(par[(length(K)+1):(2*length(K))]) 
+        theta <- exp(par[(2*length(K)+1):(3*length(K))])  
+        return(logll1(sigma, nu, theta, time, event, covatime, hP, w, K)) }
+      
+      label <- covnames
+      for (j in 1:3){
+        for (i in timevarnames) {
+          label <- c(label, get(paste0("param_names", i))[j] ) }
+      }
+    }
+    
+    if (dist=="weibull"){
+      for (i in timevarnames){
+        assign( paste0("param_names", i), c(paste0("log sigma_",i), paste0("log nu_",i)))}
+      
+      init1 <- rep(0,2*length(K))
+      
+      loglik1 <- function(par, time, event, covatime, hP, w, K){
+        sigma <- exp(par[1:length(K)])
+        nu <- exp(par[(length(K)+1):(2*length(K))])
+        theta <- rep(1,length(K)) 
+        return(logll1(sigma, nu, theta, time, event, covatime, hP, w,K)) }
+      
+      label <- covnames
+      for (j in 1:2){
+        for (i in timevarnames) {
+          label <- c(label, get(paste0("param_names", i))[j] ) }
+      }
+    }
+    
+    if (dist=="exponential"){
+      for (i in timevarnames){
+        assign(paste0("param_names", i), c(paste0("log sigma_",i)))}
+      
+      init1 <- rep(0,length(K))
+      
+      loglik1 <- function(par, time, event, covatime, hP, w, K){
+        
+        sigma <- exp(par[1:length(K)])
+        nu <- rep(1,length(K))
+        theta <- rep(1,length(K))  
+        return(logll1(sigma, nu, theta, time, event, covatime, hP, w, K)) }
+      
+      label <- covnames
+      for (i in timevarnames) {
+        label <- c(label, get(paste0("param_names", i)))}
+      
+    }
+    
+    suppressWarnings({
+      logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
+                         covatime = timevarnum, hP = hP, w = weights
+                         , K= K)
+      
+      indic <- 0
+      while(indic <= 5){
+        ll_val <- logllmax1$value
+        logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
+                           event = event, covatime = timevarnum,
+                           hP = hP, w = weights, K = K)
+        delta <- ll_val - logllmax1$value
+        if(delta ==0) {indic = indic + 1}
+      }
+      
+      logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
+                         event = event, covatime = timevarnum,
+                         hP = hP, w = weights, K= K,
+                         hessian = TRUE)
+    })
+    
+  }
+  
     logll0 <- function(sigma, nu, theta, time, event, hP, w){
        return(-1*sum(w*(event*log(hP+(
          (1/theta)*(1+(time/sigma)^nu)^((1/theta)-1)*(nu/sigma)*(time/sigma)^(nu-1) ) )
@@ -331,7 +454,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
                       hessian = TRUE, method = method, lower = lower,
                       upper = upper)
     })
-   if (length(covnames) != 0 & is.null(timevar)){
+   if (!is.null(covnames) & is.null(timevar)){
      
      suppressWarnings({
      logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
@@ -351,7 +474,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
      })
    }
    
-   if (length(covnames) != 0){
+   if (!is.null(covnames)){
      
      t.table <- data.frame(coef = logllmax1$par,
                            ecoef = exp(logllmax1$par),
@@ -360,7 +483,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
                            p = 2*(1-pnorm(abs(logllmax1$par/sqrt(diag(solve(logllmax1$hessian)))), 0, 1)),
                            row.names = label)
    }
-   else{
+   if(is.null(covnames) & is.null(timevar)){
      
      t.table <- data.frame(coef = logllmax0$par,
                            ecoef = exp(logllmax0$par),
@@ -369,6 +492,16 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
                            p = 2*(1-pnorm(abs(logllmax0$par/sqrt(diag(solve(logllmax0$hessian)))), 0, 1)),
                            row.names = label)
    }
+   if(is.null(covnames) & !is.null(timevar)){
+     
+     t.table <- data.frame(coef = logllmax1$par,
+                           ecoef = exp(logllmax1$par),
+                           se = sqrt(diag(solve(logllmax1$hessian))),
+                           z = logllmax1$par/sqrt(diag(solve(logllmax1$hessian))),
+                           p = 2*(1-pnorm(abs(logllmax1$par/sqrt(diag(solve(logllmax1$hessian)))), 0, 1)),
+                           row.names = label)
+   }
+     
   
   names(t.table) <- c("coef", "exp(coef)", "se(coef)", "z", "p")
   
@@ -380,9 +513,9 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
   
   dimnames(cova)[[2]] <- covnames
   
-  var <- if (length(covnames) != 0){solve(logllmax1$hessian)
+  var <- if(!is.null(covnames) || (is.null(covnames) & !is.null(timevar)) ){solve(logllmax1$hessian)
   }else{solve(logllmax0$hessian)}
-  loglik <- if (length(covnames) != 0){c(-1*logllmax1$value, -1*logllmax0$value)
+  loglik <- if (!is.null(covnames) || (is.null(covnames) & !is.null(timevar)) ){c(-1*logllmax1$value, -1*logllmax0$value)
   }else{-1*logllmax0$value}
     
   res <- list(
@@ -402,8 +535,9 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
     call = call
   )
   if (!is.null(xlevels)) {
+    res$correstab <- correstab
     res$xlevels <- xlevels
-  }
+    res$levelsval <- data[,strata_var]  }
   class(res) <- "survivalNET"
   return(res)
   }
