@@ -32,31 +32,31 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
   ### en développement
   if(method == "table"){
 
-    birth_date <- format(as.Date(year-age,
+    birth_md <- format(as.Date(year-age,
                   origin = "1960-1-1"), "%m-%d")
-
-    this_birthday <- as.Date(paste0(as.numeric(format(as.Date(year,
-                                  origin = "1960-01-01"), "%Y")),
-                                  paste0("-",birth_date)))
-
-    next_year_date <- as.Date(paste0(as.numeric(format(as.Date(year,
-                                  origin = "1960-01-01"),"%Y")) + 1, "-01-01"))
-
-    ##premiere partie, si l'anniversaire arrive en premier après la date de diag
-    # if(this_birthday>as.Date(dataK$year[2], origin = "1960-1-1")){}
-    process_dates <- function(bday, nexty, end_date) {
+    
+    if(birth_md == "02-29"){birth_md <- "03-01"}
+    
+    bday <- as.Date(paste0(as.numeric(format(as.Date(year,
+                    origin = "1960-01-01"), "%Y")),
+                     paste0("-", birth_md)) ) 
+    
+    next_y <- as.Date(paste0(as.numeric(format(as.Date(year,
+                              origin = "1960-01-01"),"%Y")) + 1, "-01-01") ) 
+                      
+    process_dates <- function(bday, next_y, end_date){
       bdays <- c()
       new_years <- c()
       y10 = as.numeric(difftime("1970-01-01","1960-01-01"))
       
-      while (bday <= end_date | nexty <= end_date) {
+      while (bday <= end_date | next_y <= end_date) {
         if (bday <= end_date) {
           bdays <- c(bdays, bday)
-          bday <- bday + years(1)
+          bday <- bday + lubridate::years(1)
         }
-        if (nexty <= end_date) {
-          new_years <- c(new_years, nexty)
-          nexty <- nexty + years(1)
+        if (next_y <= end_date) {
+          new_years <- c(new_years, next_y)
+          next_y <- next_y + lubridate::years(1)
         }
       }
       
@@ -68,20 +68,55 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
 
     end_date <- as.Date(year + time)
       
-    result <- process_dates(this_birthday, next_year_date, end_date)
+    result <- process_dates(bday, next_y, end_date)
+
     results <- result
     results <- c(as.Date(year),as.Date(sort(c(results$birthdays,
-               results$new_years, end_date+ as.numeric(difftime("1970-01-01",
-                "1960-01-01")) )), origin = "1960-01-01"))
+                 results$new_years, end_date+ as.numeric(difftime("1970-01-01",
+                 "1960-01-01")) )), origin = "1960-01-01"))
+   
     delta <- as.numeric(difftime(results[-1], 
-                             results[-length(results)], units = "days"))
-
+                 results[-length(results)], units = "days"))
     
-    
-    
+    if( length(delta) %% 2 == 0){
+      cond <- length(delta)/2 - 1 
+      pair = TRUE
+      }else{
+      cond <- floor(length(delta)/2) 
+      pair = FALSE}
+    ##premiere partie, si l'anniversaire arrive en premier après la date de diag
+    if(bday < next_y ){
+      haz_values <- c() 
+   
+      for (i in 0:cond ) {
+        for (j in 0:1) {
+         haz_values <- c(haz_values,
+                       ratetable[as.character( floor(age/365.24 + i +j ) ),
+                                as.character( date.mdy(year)$year + i) ,sex])
+       }
+      }
+      if (pair == FALSE){haz_values <- haz_values[-length(haz_values)]}  
+   } 
     ## deuxieme partie de la fonction
-    if(this_birthday<as.Date(dataK$year[2], origin = "1960-1-1")){}
+    if(bday > next_y){
+      haz_values <- c() 
+      
+      for (i in 0:cond) {
+        for (j in 0:1) {
+          haz_values <- c(haz_values,
+                          ratetable[as.character( floor(age/365.24 + i ) ),
+                                    as.character( date.mdy(year)$year + i+j) ,sex])
+        }
+      }
+      if (pair == FALSE){haz_values <- haz_values[-length(haz_values)]}  
+      
+    }
     
+    cumhaz <- haz_values%*%delta
+    return(cumhaz)
   }
 }
+
+
+
 
