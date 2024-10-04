@@ -7,7 +7,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
   
   if (missing(formula)) stop("a formula argument is required")
   if (missing(data)) stop("a data argument is required")
-  if (missing(ratetable)) stop("a table argument is required")
+  if (missing(ratetable)) stop("a ratetable argument is required")
   if (as.character(class(formula)) != "formula") stop("The first argument must be a formula")
   if (as.character(class(data)) != "data.frame") stop("The second argument must be a data frame")
   if (length(dim(ratetable))!=3) stop("The life table must have 3 dimensions: age, year, sex")
@@ -67,7 +67,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
   if(!is.null(timevar)){
     if(length(unique(timevar))>15) stop("The variable with a time-dependant effect has too many categories (>15)")
   }
-  ratetable_vars <- assign_ratetable_vars(unlist(lapply(ratetable_terms, extract_vars_within_function)))
+  ratetable_vars <- assign_ratetable_vars(unlist(lapply(ratetable_terms, extract_vars)))
   age <- data[,ratetable_vars$age]  
   year <- data[,ratetable_vars$year]
   sex <- data[,ratetable_vars$sex] 
