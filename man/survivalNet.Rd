@@ -12,7 +12,7 @@ survivalNET(formula, data, ratetable, dist="weibull", weights=NULL)
 }
 
 \arguments{
-\item{formula}{a formula object, with the response on the left of a ~ operator, and the terms on the right. The response must be a survival object as returned by the \code{Surv} function. On the right side, it is necessary to specify a '+\code{ratetable}(age = age, year = year, sex = sex)' term.}
+\item{formula}{a formula object, with the response on the left of a ~ operator, and the terms on the right. The response must be a survival object as returned by the \code{Surv} function. On the right side, it is necessary to specify a '+\code{ratetable}(age = age, year = year, sex = sex)' term. The time must be in days.}
 \item{data}{A data frame in which to look for the variables included in the \code{formula}.}
 \item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for the mortality of the French population, i.e. an array with three dimensions: age, sex and year.}
 \item{dist}{A character string listed in the following table to define the baseline hazard function. By default, the Weibull distribution is used.}
