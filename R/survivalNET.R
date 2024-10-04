@@ -8,7 +8,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
   
   if (missing(formula)) stop("a formula argument is required")
   if (missing(data)) stop("a data argument is required")
-  if (missing(ratetable)) stop("a table argument is required")
+  if (missing(ratetable)) stop("a ratetable argument is required")
   if (as.character(class(formula)) != "formula") stop("The first argument must
                    be a formula")
   if (as.character(class(data)) != "data.frame") stop("The second argument must
@@ -76,7 +76,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
   if(!is.null(timevar)){
     if(length(unique(timevar))>15) stop("The variable with a time-dependant effect has too many categories (>15)")
   }
-  ratetable_vars <- assign_ratetable_vars(unlist(lapply(ratetable_terms, extract_vars_within_function)))
+  ratetable_vars <- assign_ratetable_vars(unlist(lapply(ratetable_terms, extract_vars)))
   age <- data[,ratetable_vars$age] 
   year <- data[,ratetable_vars$year]
   sex <- data[,ratetable_vars$sex] 

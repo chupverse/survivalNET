@@ -8,8 +8,7 @@ Parametric Net survival
 This function allows to compute a parametric regression for modelling net survival.
 }
 \usage{
-survivalNET(formula, data, ratetable, age, year, sex, dist="weibull",
-strata=NULL, weights=NULL)
+survivalNET(formula, data, ratetable, dist="weibull", weights=NULL)
 }
 
 \arguments{

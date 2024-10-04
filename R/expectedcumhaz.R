@@ -91,8 +91,11 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
       for (i in 0:cond ) {
         for (j in 0:1) {
          haz_values <- c(haz_values,
-                       ratetable[as.character( floor(age/365.24 + i +j ) ),
-                                as.character( date.mdy(year)$year + i) ,sex])
+                       ratetable[as.character( pmin(floor(age/365.24 + i +j ),
+                                max(as.numeric(names(ratetable[, "2000", "male"])))) ),
+                                as.character( pmin(date.mdy(year)$year + i,
+                                max(as.numeric(names(ratetable["51", , "male"])))) ),
+                                sex])
        }
       }
       if (pair == FALSE){haz_values <- haz_values[-length(haz_values)]}  
@@ -116,7 +119,5 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
     return(cumhaz)
   }
 }
-
-
 
 
