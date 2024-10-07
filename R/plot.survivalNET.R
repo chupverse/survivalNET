@@ -24,7 +24,7 @@ plot.survivalNET <- function(x, n.groups=5, pro.time=NULL, newdata=NULL,
     .age <- newdata[,age]; .sex <- newdata[,sex]; .year <- newdata[,year]
     }
   
-  .pred <- predict(x, newdata=cova, newtimes=pro.time, type="survival")$predictions
+  .pred <- predict(x, newdata=cova, newtimes=pro.time, type="relative")$predictions
   
   .grps <- as.numeric(cut(.pred,
                 breaks = c(-Inf, quantile(.pred, seq(1/n.groups, 1, 1/n.groups))),

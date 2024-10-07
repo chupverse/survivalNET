@@ -37,28 +37,16 @@ data(fr.ratetable) # the table with the expected mortality rates
 
 # The multivariate PH regression with a Weibull distribution
 
-sNET <- survivalNET(Surv(time, event) ~ biomarker + sex + stade + delay, data = dataK,
-          ratetable=fr.ratetable, age="age", sex="sexchara", year="year", dist="weibull")
+sNET <- survivalNET(Surv(time, event) ~ biomarker + sex + stade + delay +
+                    ratetable(age = age, year = year, sex = sexchara),
+                    data = dataK, ratetable=fr.ratetable,
+                    dist="weibull")
+                    
+# the calibration plots for predictions at 6
 
-# the calibration plots for predictions at 2, 4, 6 and 8 years
-
-par(mfrow=c(2, 2))
-
-plot(sNET, n.groups=4, pro.time=2*365.24, 
-  ratetable=fr.ratetable, age="age", sex="sexchara", year="diagnum",
-  main="Predction at 2 years")
-
-plot(sNET, n.groups=4, pro.time=4*365.24, 
-  ratetable=fr.ratetable, age="age", sex="sexchara", year="diagnum",
-  main="Predction at 4 years")
-
-plot(sNET, n.groups=4, pro.time=6*365.24, 
+plot(sNET, n.groups=3, pro.time=6*365.24, 
   ratetable=fr.ratetable, age="age", sex="sexchara", year="diagnum",
   main="Predction at 6 years")
-
-plot(sNET, n.groups=4, pro.time=8*365.24, 
-  ratetable=fr.ratetable, age="age", sex="sexchara", year="diagnum",
-  main="Predction at 8 years")
 }
 
 \seealso{
