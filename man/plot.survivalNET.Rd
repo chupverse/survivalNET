@@ -44,9 +44,9 @@ sNET <- survivalNET(Surv(time, event) ~ biomarker + sex + stade + delay +
                     
 # the calibration plots for predictions at 6
 
-plot(sNET, n.groups=3, pro.time=6*365.24, 
-  ratetable=fr.ratetable, age="age", sex="sexchara", year="diagnum",
-  main="Predction at 6 years")
+#plot(sNET, n.groups=3, pro.time=6*365.24, 
+#  ratetable=fr.ratetable, age="age", sex="sexchara", year="diagnum",
+#  main="Predction at 6 years")
 }
 
 \seealso{
