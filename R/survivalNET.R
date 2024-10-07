@@ -36,11 +36,13 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
   covs <- as.formula(paste("~", paste(covnames, collapse = " + ")))
   cova <- model.matrix(covs, data)[, -1, drop = FALSE]
   covnames <- colnames(cova)
+  
   extract_vars <- function(term) {
     var_string <- sub("^[^\\(]+\\((.*)\\)$", "\\1", term)
     vars <- trimws(unlist(strsplit(var_string, ",")))
     return(vars)
   }
+  
   assign_ratetable_vars <- function(vars) {
     age <- year <- sex <- NULL
     for (var in vars) {
@@ -60,6 +62,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
     }
     return(list(age = age, sex = sex, year = year))
   }
+  
   strata_var = unlist(lapply(strata_terms, extract_vars))
   
   if(!is.null(strata_var) && strata_var %in% covnames) stop("The stratified covariate also appears as a covariate in the formula.")

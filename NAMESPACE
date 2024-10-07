@@ -8,7 +8,7 @@ importFrom("methods", "hasArg")
 importFrom("dplyr", "last")
 
 importFrom("stats", "median", "optim", "pchisq", "pnorm", "predict",
-             "quantile", "terms")
+             "quantile", "terms", "integrate", "as.formula", "model.matrix", "setNames")
   
 importFrom("graphics", "abline", "lines", "plot.default", "grid", "segments")
 

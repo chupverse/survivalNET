@@ -70,8 +70,9 @@ plot(PPest)
 
 # The parametric estimation of the net survival curves (Weibull distribution)
 
-sNET <- survivalNET(Surv(time, event) ~ stade + delay + ratetable(age = age, year = year,                            sex = sexchara), data = dataK, ratetable=fr.ratetable,
-                         dist="weibull",weights=NULL)
+sNET <- survivalNET(Surv(time, event) ~ stade + delay + ratetable(age = age, year = year, 
+                    sex = sexchara), data = dataK, ratetable=fr.ratetable,
+                    dist="weibull")
 
 sNET.pred <- predict(sNET, newdata=data.frame( stade=c(0,0,1,1), delay=c(0,1,0,1) ) )
 
