@@ -9,14 +9,16 @@ Predict the net survival based on a model or an algorithm from an object of the 
 }
 
 \usage{
-\method{predict}{survivalNET}(object, type="survival", newdata, newtimes, ...)
+\method{predict}{survivalNET}(object, type="relative", newdata=NULL,
+      newtimes=NULL, ratetable = NULL, ...)
 }
 
 \arguments{
-  \item{object}{An object returned by the function \code{urvivalNET}.}
-  \item{type}{A character string indicating the type of predicted value : "lp" returns the linear predictor of the model related to the excess hazard, while "survival" (the default value) returns the net survival rates.}
+  \item{object}{An object returned by the function \code{survivalNET}.}
+  \item{type}{A character string indicating the type of predicted value : "lp" returns the linear predictor of the model related to the excess hazard, while "relative" (the default value) returns the net survival rates.}
   \item{newdata}{An optional data frame containing covariate values at which to produce predicted values. There must be a column for every covariate included in the training sample. If \code{NULL} (the default value), the predicted values are computed for the subjects of the training sample.}
   \item{newtimes}{The times at which to produce predicted values. If \code{NULL} (the default value), the predicted values are computed for the observed times in the training data frame.}
+  \item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for the mortality of the French population, i.e. an array with three dimensions: age, sex and year.}
   \item{...}{For future methods.}
 }
 
@@ -39,10 +41,11 @@ plot(PPest)
 
 # The parametric estimation of the net survival curves (Weibull distribution)
 
-sNET <- survivalNET(Surv(time, event) ~ stade + delay, data = dataK, ratetable=fr.ratetable,
-                     age="age", sex="sexchara", year="year", dist="weibull",
-                     strata=NULL, weights=NULL)
-
+sNET <- survivalNET(Surv(time, event) ~ stade + delay +
+                    ratetable(age = age, year = year, sex = sexchara),
+                    data = dataK, ratetable=fr.ratetable,
+                    dist="weibull")
+                    
 sNET.pred <- predict(sNET, newdata=data.frame( stade=c(0,0,1,1), delay=c(0,1,0,1) ) )
 
 for (i in 1:4) {lines(sNET.pred$times, sNET.pred$predictions[i,], col=2)}

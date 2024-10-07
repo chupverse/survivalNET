@@ -19,7 +19,7 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
     integrateA <- function(f, lower, upper, ..., subdivisions=100L, rel.tol=.Machine$double.eps^0.25,
                            abs.tol=rel.tol, stop.on.error=TRUE, keep.xy=FALSE, aux=NULL)
     {
-      r <- stats::integrate(f, lower, upper, ..., subdivisions=subdivisions, rel.tol=rel.tol,
+      r <- integrate(f, lower, upper, ..., subdivisions=subdivisions, rel.tol=rel.tol,
                             abs.tol=abs.tol, stop.on.error=F, keep.xy=keep.xy, aux=aux)
       if ( !(r[['message']] %in% c('OK', 'maximum number of subdivisions reached')) ) {
         if (stop.on.error) { stop(r$message) }  }
@@ -29,7 +29,7 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
     return(integrateA(Vectorize(.f), lower=0, upper=time, subdivisions = subdivisions)$value)
   }
   
-  ### en développement
+  ### under development
   if(method == "table"){
 
     birth_md <- format(as.Date(year-age,
@@ -52,11 +52,11 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
       while (bday <= end_date | next_y <= end_date) {
         if (bday <= end_date) {
           bdays <- c(bdays, bday)
-          bday <- bday + lubridate::years(1)
+          bday <- bday + 31557600
         }
         if (next_y <= end_date) {
           new_years <- c(new_years, next_y)
-          next_y <- next_y + lubridate::years(1)
+          next_y <- next_y + 31557600
         }
       }
       
@@ -84,7 +84,7 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
       }else{
       cond <- floor(length(delta)/2) 
       pair = FALSE}
-    ##premiere partie, si l'anniversaire arrive en premier après la date de diag
+    ##first part, if the anniversary is before the diag date
     if(bday < next_y ){
       haz_values <- c() 
    
