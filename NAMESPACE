@@ -3,7 +3,7 @@ import(date)
 import(survival)
 import(relsurv)
 
-importFrom("methods", "hasArg")
+importFrom("methods", "hasArg", "new")
 
 importFrom("dplyr", "last")
 
@@ -11,6 +11,8 @@ importFrom("stats", "median", "optim", "pchisq", "pnorm", "predict",
              "quantile", "terms", "integrate", "as.formula", "model.matrix", "setNames")
   
 importFrom("graphics", "abline", "lines", "plot.default", "grid", "segments")
+
+#importFrom("lubridate", "period")
 
 export(survivalNET)
 export(expectedcumhaz)

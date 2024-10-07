@@ -30,10 +30,11 @@ data(fr.ratetable) # the table with the expected mortality rates
 
 # The parametric estimation of the net survival curves (Weibull distribution)
 
-sNET <- survivalNET(Surv(time, event) ~ stade + delay, data = dataK, ratetable=fr.ratetable,
-                     age="age", sex="sexchara", year="year", dist="weibull",
-                     strata=NULL, weights=NULL)
-
+sNET <- survivalNET(Surv(time, event) ~ stade + delay +
+                    ratetable(age = age, year = year, sex = sexchara),
+                    data = dataK, ratetable=fr.ratetable,
+                    dist="weibull")
+                    
 print(sNET)
 }
 
