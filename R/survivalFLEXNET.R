@@ -101,9 +101,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
   
   ###### log likelihood functions
   
-  if (!is.null(covnames)){
-  
-  if(is.null(timevar)){
+  if (!is.null(covnames) & is.null(timevar)){
     
     logll1 <- function(beta, gamma, time, event, cova, hP, w, m, mpos){
       return(-1*sum( w*(
@@ -145,9 +143,10 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
                        m = m, mpos = mpos,
                        hessian = TRUE)
     })
+  
   }
   
-  if(!is.null(timevar)){
+  if(!is.null(covnames) & !is.null(timevar)){
     
     timevarnames <- sort(unique(timevar))
     correstab <- setNames(seq_along(timevarnames), timevarnames)
@@ -156,7 +155,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
     
     K = sort(unique(timevarnum))
     
-    logll1 <- function(beta, gamma, time, event, cova, covatime, hP, w, m, mpos, K){
+    logll2 <- function(beta, gamma, time, event, cova, covatime, hP, w, m, mpos, K){
       
       value = 0
       for(k in K){
@@ -193,34 +192,32 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
     
     init1 <- c(rep(0,dim(cova)[2]+(length(K)*(m+2))))
     
-    loglik1 <- function(par, time, event, cova, covatime, hP, w, m, mpos, K){
+    loglik2 <- function(par, time, event, cova, covatime, hP, w, m, mpos, K){
       beta <- par[1:dim(cova)[2]]
       gamma <-matrix(par[(dim(cova)[2]+1):(dim(cova)[2]+(length(K)*(m+2)))], ncol = length(K))
       
-      return(logll1(beta, gamma, time, event, cova, covatime, hP, w, m, mpos, K)) }
+      return(logll2(beta, gamma, time, event, cova, covatime, hP, w, m, mpos, K)) }
     
     suppressWarnings({
-    logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
+    logllmax1 <- optim(par = init1, fn = loglik2, time = time, event = event,
                        cova = cova, covatime = timevarnum, hP = hP, w = weights
                        , m = m, mpos = mpos, K= K)
     
     indic <- 0
     while(indic <= 5){
       ll_val <- logllmax1$value
-      logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
+      logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, 
                          event = event, cova = cova, covatime = timevarnum,
                          hP = hP, w = weights, m = m, mpos = mpos, K = K)
       delta <- ll_val - logllmax1$value
       if(delta ==0) {indic = indic + 1}
     }
     
-    logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
+    logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, 
                        event = event, cova = cova, covatime = timevarnum,
                        hP = hP, w = weights, m = m, mpos = mpos, K= K,
                        hessian = TRUE)
     })
-  }
-  
   }
   
   if (is.null(covnames) & !is.null(timevar)){
@@ -232,7 +229,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
     
     K = sort(unique(timevarnum))
     
-    logll1 <- function(gamma, time, event, covatime, hP, w, m, mpos, K){
+    logll3 <- function(gamma, time, event, covatime, hP, w, m, mpos, K){
       
       value = 0
       for(k in K){
@@ -268,28 +265,28 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
     
     init1 <- rep(0,(length(K)*(m+2)))
     
-    loglik1 <- function(par, time, event, covatime, hP, w, m, mpos, K){
+    loglik3 <- function(par, time, event, covatime, hP, w, m, mpos, K){
      
        gamma <-matrix(par[1:((length(K)*(m+2)))], ncol = length(K))
       
-      return(logll1(gamma, time, event, covatime, hP, w, m, mpos, K)) }
+      return(logll3(gamma, time, event, covatime, hP, w, m, mpos, K)) }
     
     suppressWarnings({
-      logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
+      logllmax1 <- optim(par = init1, fn = loglik3, time = time, event = event,
                           covatime = timevarnum, hP = hP, w = weights
                          , m = m, mpos = mpos, K= K)
       
       indic <- 0
       while(indic <= 5){
         ll_val <- logllmax1$value
-        logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
+        logllmax1 <- optim(par = logllmax1$par, fn = loglik3, time = time, 
                            event = event, covatime = timevarnum,
                            hP = hP, w = weights, m = m, mpos = mpos, K = K)
         delta <- ll_val - logllmax1$value
         if(delta ==0) {indic = indic + 1}
       }
       
-      logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
+      logllmax1 <- optim(par = logllmax1$par, fn = loglik3, time = time, 
                          event = event, covatime = timevarnum,
                          hP = hP, w = weights, m = m, mpos = mpos, K= K,
                          hessian = TRUE)
@@ -346,6 +343,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
                           p = 2*(1-pnorm(abs(logllmax1$par/sqrt(diag(solve(logllmax1$hessian)))), 0, 1)),
                           row.names = label)
   }
+  
   if(is.null(covnames) & is.null(timevar)){
     t.table <- data.frame(coef = logllmax0$par,
                           ecoef = exp(logllmax0$par),
@@ -354,6 +352,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
                           p = 2*(1-pnorm(abs(logllmax0$par/sqrt(diag(solve(logllmax0$hessian)))), 0, 1)),
                           row.names = labelNULL)
   }
+  
   if(is.null(covnames) & !is.null(timevar)){
     t.table <- data.frame(coef = logllmax1$par,
                           ecoef = exp(logllmax1$par),
