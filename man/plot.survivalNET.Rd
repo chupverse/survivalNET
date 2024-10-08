@@ -37,8 +37,9 @@ data(fr.ratetable) # the table with the expected mortality rates
 
 # The multivariate PH regression with a Weibull distribution
 
-sNET <- survivalNET(Surv(time, event) ~ biomarker + sex + stade + delay + ratetable(age=age, year=year, sex=sexchara), data = dataK,
-          ratetable=fr.ratetable, dist="weibull")
+sNET <- survivalNET(Surv(time, event) ~ biomarker + sex + stade + delay + 
+                ratetable(age=age, year=year, sex=sexchara), data = dataK,
+                ratetable=fr.ratetable, dist="weibull")
 
 # the calibration plots for predictions at 2, 4, 6 and 8 years
 

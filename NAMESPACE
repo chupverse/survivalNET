@@ -3,7 +3,7 @@ import(date)
 import(survival)
 import(relsurv)
 
-importFrom("methods", "hasArg")
+importFrom("methods", "hasArg", "new")
 
 importFrom("dplyr", "last")
 

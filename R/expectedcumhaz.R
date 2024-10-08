@@ -29,7 +29,6 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
     return(integrateA(Vectorize(.f), lower=0, upper=time, subdivisions = subdivisions)$value)
   }
   
-  ### under development
   if(method == "table"){
 
     birth_md <- format(as.Date(year-age,
@@ -52,11 +51,13 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
       while (bday <= end_date | next_y <= end_date) {
         if (bday <= end_date) {
           bdays <- c(bdays, bday)
-          bday <- bday + 31557600
+          bday <- bday + new("Period", second = 0, year = 1, month = 0,  
+                             day = 0, hour = 0, minute = 0)
         }
         if (next_y <= end_date) {
           new_years <- c(new_years, next_y)
-          next_y <- next_y + 31557600
+          next_y <- next_y + new("Period", second = 0, year = 1, month = 0, 
+                                 day = 0, hour = 0, minute = 0)
         }
       }
       

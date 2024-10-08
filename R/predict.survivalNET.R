@@ -2,6 +2,9 @@
 predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=NULL,
                                 ratetable = NULL, ...){
     
+  if(!(type %in% c("relative","lp","overall")))  stop("Argument 
+                  'type' must be 'relative', 'lp', 'overall' ")
+  
   if(is.null(newtimes))  { newtimes <- 1:max(object$y[,1]) }
   
   if(0 %in% newtimes){
