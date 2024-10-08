@@ -12,6 +12,8 @@ importFrom("stats", "median", "optim", "pchisq", "pnorm", "predict",
   
 importFrom("graphics", "abline", "lines", "plot.default", "grid", "segments")
 
+#importFrom("lubridate", "period")
+
 export(survivalNET)
 export(expectedcumhaz)
 export(expectedhaz)
