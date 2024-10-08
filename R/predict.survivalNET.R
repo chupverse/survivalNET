@@ -3,7 +3,9 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
                                 ratetable = NULL, ...){
     
   if(!(type %in% c("relative","lp","overall")))  stop("Argument 
-                  'type' must be 'relative', 'lp', 'overall' ")
+                  'type' must be 'relative', 'lp' or 'overall' ")
+  if(type == "overall")stop("The 'overall' survival prediction is still under developpement. Please
+                            use 'type = 'relative' or 'lp'. ")
   
   if(is.null(newtimes))  { newtimes <- 1:max(object$y[,1]) }
   
@@ -164,11 +166,11 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
       if (!("xlevels" %in% names(object))) {
       
       if(dim(object$x)[2] != 0){
-      fun <- function(x) { exp( exp(covariates%*%beta)*(1-(1+(x/sigma)^nu)^(1/theta)) ) }
+      fun1 <- function(x) { exp( exp(covariates%*%beta)*(1-(1+(x/sigma)^nu)^(1/theta)) ) }
       }
       
       if(dim(object$x)[2] == 0){
-        fun <- function(x) { exp(1-(1+(x/sigma)^nu)^(1/theta) ) }
+        fun2 <- function(x) { exp(1-(1+(x/sigma)^nu)^(1/theta) ) }
       }
       
       }
@@ -176,21 +178,8 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
       if ("xlevels" %in% names(object)) {
          
         if(dim(object$x)[2] != 0){
-           
-          # fun <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
-          #   rend <- data.frame()
-          #   for (k in K){
-          #     covariatesk <- as.matrix( covariates[covariates[[timecov]] == k, -dim(covariates)[2]]) 
-          #     sigmak <- sigmas[k]
-          #     nuk <- nus[k]
-          #     thetak <- thetas[k]
-          #     sur <-exp( exp(covariatesk%*%beta)*(1-(1+(x/sigmak)^nuk)^(1/thetak)) )
-          #   rend <- rbind(rend, sur)
-          #   }
-          #   rend[order(rownames(rend)),]
-          # }
           
-          fun <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
+          fun3 <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
             n <- dim(covariates)[1]
             timpos <- dim(covariates)[2]
             rend <- data.frame()
@@ -211,7 +200,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
         
         if(dim(object$x)[2] == 0){
           
-          fun <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
+          fun4 <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
             n <- dim(covariates)[1]
             timpos <- dim(covariates)[2]
             rend <- data.frame()
@@ -237,11 +226,11 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
         splnvalues <- splinecube(newtimes, gamma, m, mpos)$spln
       
       if(dim(object$x)[2] != 0){
-        fun <- function(x){ exp( -1*exp(as.matrix(covariates)%*%beta)*exp(x))}
+        fun5 <- function(x){ exp( -1*exp(as.matrix(covariates)%*%beta)*exp(x))}
       }
       
       if(dim(object$x)[2] == 0){
-        fun <- function(x){ exp( -1*exp(x) ) }
+        fun6 <- function(x){ exp( -1*exp(x) ) }
       }
       
       }
@@ -252,7 +241,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
           
           gammas <- matrix(object$coefficients[-(1:dim(object$x)[2])], ncol = length(object$xlevels[[1]]))
           
-          fun <- function(x, covariates, gammas, timecov, K=NULL) {
+          fun7 <- function(x, covariates, gammas, timecov, K=NULL) {
             n <- dim(covariates)[1]
             timpos <- dim(covariates)[2]
             rend <- data.frame()
@@ -272,7 +261,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
           
           gammas <- matrix(object$coefficients, ncol = length(object$xlevels[[1]]))
           
-          fun <- function(x, covariates, gammas, timecov, K=NULL) {
+          fun8 <- function(x, covariates, gammas, timecov, K=NULL) {
             n <- dim(covariates)[1]
             timpos <- dim(covariates)[2]
             rend <- data.frame()
@@ -297,7 +286,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
     
   if(type=="overall"){
     if ("dist" %in% names(object)) {
-      fun <- function(x) {
+      fun9 <- function(x) {
         sapply(x, function(t) {
           exp(exp(covariates %*% beta) * (1 - (1 + (t / sigma)^nu)^(1 / theta))) * 
             exp(-1 * sapply(1:dim(covariates)[1], 
@@ -309,7 +298,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
     }
     if("m" %in% names(object)){
       splnvalues <- splinecube(newtimes, gamma, m, mpos)$spln
-      fun <- function(x) {
+      fun10 <- function(x) {
         sapply(x, function(t) {
           exp(- exp(covariates %*% beta + x) ) * 
             exp(-1 * sapply(1:dim(covariates)[1], 
@@ -324,16 +313,18 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
       
   ###predictions 
   
+  if (type == "relative"){
+  
   if ("dist" %in% names(object)) {
       
       if (!("xlevels" %in% names(object))){
         
         if(dim(object$x)[2] != 0){
-             predictions <- sapply(newtimes, FUN = "fun")}
+             predictions <- sapply(newtimes, FUN = "fun1")}
         
         if(dim(object$x)[2] == 0){
              n <- dim(object$y)[1]
-             predictions <- data.frame(matrix(rep(fun(newtimes), each = n), nrow = n, byrow = FALSE))}
+             predictions <- data.frame(matrix(rep(fun2(newtimes), each = n), nrow = n, byrow = FALSE))}
       }
    
       if ("xlevels" %in% names(object)){
@@ -345,10 +336,18 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
          timecov <- names(object$xlevels)
            
          K = sort(unique(timevarnum))
-  
-         predictions <- fun(x = newtimes, covariates = covariates,
+      
+         if(dim(object$x)[2] != 0){
+         predictions <- fun3(x = newtimes, covariates = covariates,
                             sigmas = sigmas, nus = nus, thetas = thetas,
                             timecov = timecov, K = K)
+         }
+         if(dim(object$x)[2] == 0){
+           
+           predictions <- fun4(x = newtimes, covariates = covariates,
+                               sigmas = sigmas, nus = nus, thetas = thetas,
+                               timecov = timecov, K = K)
+           }
      }
     
       }
@@ -358,10 +357,10 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
       if (!("xlevels" %in% names(object))){
         
           if(dim(object$x)[2] != 0){
-              predictions <- sapply(splnvalues, FUN = "fun")}
+              predictions <- sapply(splnvalues, FUN = "fun5")}
           if(dim(object$x)[2] == 0){
               n <- dim(object$y)[1]
-              predictions <- data.frame(matrix(rep(sapply(splnvalues, FUN = "fun")
+              predictions <- data.frame(matrix(rep(sapply(splnvalues, FUN = "fun6")
                                         , each = n), nrow = n, byrow = FALSE))}
          }
     
@@ -377,22 +376,95 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
         
           if(dim(object$x)[2] != 0){
               n <- dim(object$y)[1]
-              predictions <- fun(newtimes, covariates = 
+              predictions <- fun7(newtimes, covariates = 
                                  covariates, gammas = gammas, timecov = 
                                  timecov, K= K)}
           
           if(dim(object$x)[2] == 0){
               n <- dim(object$y)[1]
-              predictions <- fun(newtimes, covariates = 
+              predictions <- fun8(newtimes, covariates = 
                                   covariates, gammas = gammas, timecov = 
                                   timecov, K= K)}
       }
-        } 
+  } 
+    
+  predictions <- unname(cbind(rep(1, dim(predictions)[1]), predictions))
+    
+  }
   
-   predictions <- unname(cbind(rep(1, dim(predictions)[1]), predictions))
-  
+  if (type == "overall"){
+    
+    if ("dist" %in% names(object)) {
+      
+      if (!("xlevels" %in% names(object))){
+        
+        if(dim(object$x)[2] != 0){
+          predictions <- sapply(newtimes, FUN = "fun9")}
+        
+        if(dim(object$x)[2] == 0){
+          n <- dim(object$y)[1]
+          predictions <- data.frame(matrix(rep(fun9(newtimes), each = n), nrow = n, byrow = FALSE))}
+      }
+      
+      if ("xlevels" %in% names(object)){
+        
+        correstab <- object$correstab
+        timevar <- as.integer(unlist(covariates[names(object$xlevels)]))
+        timevarnum <- as.numeric(correstab[as.character(timevar)]) 
+        covariates[,dim(covariates)[2]] <- timevarnum
+        timecov <- names(object$xlevels)
+        
+        K = sort(unique(timevarnum))
+        
+        predictions <- fun9(x = newtimes, covariates = covariates,
+                           sigmas = sigmas, nus = nus, thetas = thetas,
+                           timecov = timecov, K = K)
+      }
+      
+    }
+    
+    if ("m" %in% names(object)) {
+      
+      if (!("xlevels" %in% names(object))){
+        
+        if(dim(object$x)[2] != 0){
+          predictions <- sapply(splnvalues, FUN = "fun10")}
+        if(dim(object$x)[2] == 0){
+          n <- dim(object$y)[1]
+          predictions <- data.frame(matrix(rep(sapply(splnvalues, FUN = "fun10")
+                                               , each = n), nrow = n, byrow = FALSE))}
+      }
+      
+      if ("xlevels" %in% names(object)){
+        
+        correstab <- object$correstab
+        timevar <- as.integer(unlist(covariates[names(object$xlevels)]))
+        timevarnum <- as.numeric(correstab[as.character(timevar)]) 
+        covariates[,dim(covariates)[2]] <- timevarnum
+        timecov <- names(object$xlevels)
+        
+        K = sort(unique(timevarnum))
+        
+        if(dim(object$x)[2] != 0){
+          n <- dim(object$y)[1]
+          predictions <- fun10(newtimes, covariates = 
+                               covariates, gammas = gammas, timecov = 
+                               timecov, K= K)}
+        
+        if(dim(object$x)[2] == 0){
+          n <- dim(object$y)[1]
+          predictions <- fun10(newtimes, covariates = 
+                               covariates, gammas = gammas, timecov = 
+                               timecov, K= K)}
+      }
+    } 
+    
+    predictions <- unname(cbind(rep(1, dim(predictions)[1]), predictions))
+    
+  }
+   
   if(type == "lp"){
-    predictions <- predictions[,2]
+    predictions <- covariates %*% object$coefficients[covnames]
   }
   
   newtimes <- c(0, newtimes)
