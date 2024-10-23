@@ -1,20 +1,24 @@
 
 predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=NULL,
-                                ratetable = NULL, ...){
+                                ratetable = NULL, method = NULL, ...){
     
   if(!(type %in% c("relative","lp","overall")))  stop("Argument 
                   'type' must be 'relative', 'lp' or 'overall' ")
-  if(type == "overall")stop("The 'overall' survival prediction is still under developpement. Please
+  if(type == "overall" && "m" %in% names(object))stop("The 'overall' survival prediction
+  for survivalFLEXNET is still under development. Please
                             use 'type = 'relative' or 'lp'. ")
   
   if(is.null(newtimes))  { newtimes <- 1:max(object$y[,1]) }
+  
+  if(!is.null(newtimes))  {newtimes <- unique(newtimes)}
   
   if(0 %in% newtimes){
       newtimes <- sort(newtimes[-(newtimes == 0)])
     }
     
   if(!is.null(newdata))
-    {
+    { 
+    n <- dim(newdata)[1]
       if(!is.data.frame(newdata)) stop("Argument 'newdata' must be a data frame")
     
       covnames <- names(as.data.frame(object$x))
@@ -24,10 +28,18 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
     
       indic <- covnames %in% names(newdata) 
       if( sum(!indic) > 0 ) stop("Missing predictor in the data frame")
-      covariates <- as.matrix(newdata[,covnames])
+      covariates <- as.data.frame(as.matrix(newdata[,covnames]))
+      names(covariates) <- covnames
       
       if(type=="overall"){
         if(is.null(ratetable))stop("For overall survival, the 'ratetable' argument is necessary.")
+        if(!is.null(method) && !(method %in% c("exact", "trapezoidal", "table")))stop("For overall 
+                          survival, method can only take the values 'exact', 'trapzoidal' or 
+                          'table'.")
+        if(is.null(method)){
+          method = "exact"}else{
+          method = method
+        }
         all_terms = attr(terms(object$formula), "term.labels")
         ratetable_terms <- grep("ratetable\\(", all_terms, value = TRUE)
         extract_vars <- function(term) {
@@ -76,6 +88,8 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
     
   if(is.null(newdata))  { 
     
+    n <- dim(object$y)[1]
+    
     covnames <- names(as.data.frame(object$x))
     covariates <- object$x 
     if ("xlevels" %in% names(object)) {
@@ -87,6 +101,13 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
       
         if(type=="overall"){
           if(is.null(ratetable))stop("For overall survival, the 'ratetable' argument is necessary.")
+          if(!is.null(method) && !(method %in% c("exact", "trapezoidal", "table")))stop("For overall 
+                          survival, method can only take the values 'exact', 'trapzoidal' or 
+                          'table'.")
+          if(is.null(method)){
+            method = "exact"}else{
+              method = method
+            }
           age = object$ays$age
           year = object$ays$year
           sex = object$ays$sex
@@ -99,60 +120,62 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
     
   if ("dist" %in% names(object)) {
      
-        if(object$dist=="genweibull")  {
-              beta <- object$coefficients[1:(dim(object$x)[2])]
-              sigma <- exp(object$coefficients[(dim(object$x)[2])+1])
-              nu <- exp(object$coefficients[(dim(object$x)[2])+2])
-              theta <- exp(object$coefficients[(dim(object$x)[2])+3])
-              }
+        if (!("xlevels" %in% names(object))) {   
+    
+          if(object$dist=="genweibull")  {
+                beta <- unname( object$coefficients[1:(dim(object$x)[2])] )
+                sigma <- unname( exp(object$coefficients[(dim(object$x)[2])+1]) )
+                nu <- unname( exp(object$coefficients[(dim(object$x)[2])+2]) )
+                theta <- unname( exp(object$coefficients[(dim(object$x)[2])+3]) )
+                }
             
-        if(object$dist=="weibull")  {
-            beta <- object$coefficients[1:(dim(object$x)[2])]
-            sigma <- exp(object$coefficients[(dim(object$x)[2])+1])
-            nu <- exp(object$coefficients[(dim(object$x)[2])+2])
-            theta <- 1
-              }
+          if(object$dist=="weibull")  {
+              beta <- unname( object$coefficients[1:(dim(object$x)[2])] )
+              sigma <- unname( exp(object$coefficients[(dim(object$x)[2])+1]) )
+              nu <- unname( exp(object$coefficients[(dim(object$x)[2])+2]) )
+              theta <- 1
+                }
             
-        if(object$dist=="exponential")  {
-            beta <- object$coefficients[1:(dim(object$x)[2])]
-            sigma <- exp(object$coefficients[(dim(object$x)[2])+1])
-            nu <- 1
-            theta <- 1
-              }
-      
+          if(object$dist=="exponential")  {
+              beta <- unname( object$coefficients[1:(dim(object$x)[2])] )
+              sigma <- unname( exp(object$coefficients[(dim(object$x)[2])+1]) )
+              nu <- 1
+              theta <- 1
+                }
+            }
         if ("xlevels" %in% names(object)) {   
         
-        if(object$dist=="genweibull")  {
-          beta <- object$coefficients[1:(dim(object$x)[2])]
-          sigmas <- exp(object$coefficients[grep("^log sigma_", 
-                                names(object$coefficients))])
-          nus <- exp(object$coefficients[grep("^log nu_", 
-                                names(object$coefficients))])
-          thetas <- exp(object$coefficients[grep("^log theta_", 
-                                names(object$coefficients))])
-        }
-        if(object$dist=="weibull")  {
-          beta <- object$coefficients[1:(dim(object$x)[2])]
-          sigmas <- exp(object$coefficients[grep("^log sigma_", 
-                                names(object$coefficients))])
-          nus <- exp(object$coefficients[grep("^log nu_", 
-                                names(object$coefficients))])
-          thetas <- rep(1,length(sigmas))
-        }
-        if(object$dist=="exponential")  {
-          beta <- object$coefficients[1:(dim(object$x)[2])]
-          sigmas <- exp(object$coefficients[grep("^log sigma_", 
-                             names(object$coefficients))])
-          nus <- rep(1,length(sigmas))
-          thetas <- rep(1,length(sigmas))
-        }
+          if(object$dist=="genweibull")  {
+            beta <- unname( object$coefficients[1:(dim(object$x)[2])] )
+            sigmas <- unname( exp(object$coefficients[grep("^log sigma_", 
+                                  names(object$coefficients))]) ) 
+            nus <- unname( exp(object$coefficients[grep("^log nu_", 
+                                  names(object$coefficients))]) )
+            thetas <- unname( exp(object$coefficients[grep("^log theta_", 
+                                  names(object$coefficients))]) )
+          }
+          if(object$dist=="weibull")  {
+            beta <- unname( object$coefficients[1:(dim(object$x)[2])] )
+            sigmas <- unname( exp(object$coefficients[grep("^log sigma_", 
+                                  names(object$coefficients))]) )
+            nus <- unname( exp(object$coefficients[grep("^log nu_", 
+                                  names(object$coefficients))]) )
+            thetas <- rep(1,length(sigmas))
+          }
+          if(object$dist=="exponential")  {
+            beta <- unname( object$coefficients[1:(dim(object$x)[2])] )
+            sigmas <- unname( exp(object$coefficients[grep("^log sigma_", 
+                               names(object$coefficients))]) )
+            nus <- rep(1,length(sigmas))
+            thetas <- rep(1,length(sigmas))
+          }
        }
     }
   
   if("m" %in% names(object)){
       
-       beta <- object$coefficients[1:(dim(object$x)[2])]
-       gamma <- object$coefficients[(dim(object$x)[2]+1):(dim(object$t.table)[1])]
+       beta <- unname( object$coefficients[1:(dim(object$x)[2])] )
+       gamma <- unname( object$coefficients[(dim(object$x)[2]+1):(dim(object$t.table)[1])] ) 
        m = object$m
        mpos = object$mpos
   }
@@ -161,231 +184,417 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
     
   if(type=="relative") {
     
-    if ("dist" %in% names(object)) {
-      
-      if (!("xlevels" %in% names(object))) {
-      
-      if(dim(object$x)[2] != 0){
-      fun1 <- function(x) { exp( exp(covariates%*%beta)*(1-(1+(x/sigma)^nu)^(1/theta)) ) }
-      }
-      
-      if(dim(object$x)[2] == 0){
-        fun2 <- function(x) { exp(1-(1+(x/sigma)^nu)^(1/theta) ) }
-      }
-      
-      }
-      
-      if ("xlevels" %in% names(object)) {
-         
-        if(dim(object$x)[2] != 0){
+    ## survivalNET
+      if ("dist" %in% names(object)) {
+        
+        ##pas de strate
+          if (!("xlevels" %in% names(object))) {
           
-          fun3 <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
-            n <- dim(covariates)[1]
-            timpos <- dim(covariates)[2]
-            rend <- data.frame()
-            for (i in 1:n){
-              timeval <- covariates[i,timpos]
-              covi <- covariates[i,-timpos]
-              sigmak <- sigmas[timeval]
-              nuk <- nus[timeval]
-              thetak <- thetas[timeval]
-              sur <-exp( exp(covi%*%beta)*(1-(1+(x/sigmak)^nuk)^(1/thetak)) )
-              rend <- rbind(rend, sur)
-            }
-            rend
+            ##avec covariables
+              if(dim(object$x)[2] != 0){
+              net_rel_cov <- function(x) { exp( exp(as.matrix(covariates)%*%beta)*(1-(1+(x/sigma)^nu)^(1/theta)) ) }
+              }
+              
+            ##pas de covariables
+              if(dim(object$x)[2] == 0){
+                net_rel_nocov <- function(x) { exp(1-(1+(x/sigma)^nu)^(1/theta) ) }
+              }
+          
           }
           
-          
-        }
-        
-        if(dim(object$x)[2] == 0){
-          
-          fun4 <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
-            n <- dim(covariates)[1]
-            timpos <- dim(covariates)[2]
-            rend <- data.frame()
-            for (i in 1:n){
-              timeval <- covariates[i,timpos]
-              sigmak <- sigmas[timeval]
-              nuk <- nus[timeval]
-              thetak <- thetas[timeval]
-              sur <-exp( (1-(1+(x/sigmak)^nuk)^(1/thetak)) )
-              rend <- rbind(rend, sur)
-            }
-            rend
-          }  
-          
-        }
+        ##avec strate
+          if ("xlevels" %in% names(object)) {
+             
+            ##avec covariables
+              if(dim(object$x)[2] != 0){
+                
+                net_rel_strata_cov <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
+                  n <- dim(covariates)[1]
+                  timpos <- dim(covariates)[2]
+                  rend <- data.frame()
+                  for (i in 1:n){
+                    timeval <- covariates[i,timpos]
+                    covi <- covariates[i,-timpos]
+                    sigmak <- sigmas[timeval]
+                    nuk <- nus[timeval]
+                    thetak <- thetas[timeval]
+                    sur <-exp( exp(covi%*%beta)*(1-(1+(x/sigmak)^nuk)^(1/thetak)) )
+                    rend <- rbind(rend, sur)
+                  }
+                  rend
+                }
+                
+                
+              }
+            
+            ##pas de covariables 
+              if(dim(object$x)[2] == 0){
+                
+                net_rel_strata_nocov <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
+                  n <- dim(covariates)[1]
+                  timpos <- dim(covariates)[2]
+                  rend <- data.frame()
+                  for (i in 1:n){
+                    timeval <- covariates[i,timpos]
+                    sigmak <- sigmas[timeval]
+                    nuk <- nus[timeval]
+                    thetak <- thetas[timeval]
+                    sur <-exp( (1-(1+(x/sigmak)^nuk)^(1/thetak)) )
+                    rend <- rbind(rend, sur)
+                  }
+                  rend
+                }  
+                
+              }
+           }
        }
-     }
-    
-    if("m" %in% names(object)){
       
-      if (!("xlevels" %in% names(object))) {
-      
-        splnvalues <- splinecube(newtimes, gamma, m, mpos)$spln
-      
-      if(dim(object$x)[2] != 0){
-        fun5 <- function(x){ exp( -1*exp(as.matrix(covariates)%*%beta)*exp(x))}
-      }
-      
-      if(dim(object$x)[2] == 0){
-        fun6 <- function(x){ exp( -1*exp(x) ) }
-      }
-      
-      }
-      
-      if ("xlevels" %in% names(object)) {
-      
-        if(dim(object$x)[2] != 0){
+    ## survivalFLEXNET
+      if("m" %in% names(object)){
+        
+        ##pas de strate  
+          if (!("xlevels" %in% names(object))) {
           
-          gammas <- matrix(object$coefficients[-(1:dim(object$x)[2])], ncol = length(object$xlevels[[1]]))
+            #valeurs de la spline
+            splnvalues <- splinecube(newtimes, gamma, m, mpos)$spln
+            ##avec covariables
+              if(dim(object$x)[2] != 0){
+                flex_rel_cov <- function(x){ exp( -1*exp(as.matrix(covariates)%*%beta)*exp(x) )}
+              }
+            
+            ##pas de covariables
+              if(dim(object$x)[2] == 0){
+                
+                flex_rel_nocov <- function(x){ exp( -1*exp(x) ) }
+              }
           
-          fun7 <- function(x, covariates, gammas, timecov, K=NULL) {
-            n <- dim(covariates)[1]
-            timpos <- dim(covariates)[2]
-            rend <- data.frame()
-            for (i in 1:n){
-              timeval <- covariates[i,timpos]
-              gammai <- gammas[,timeval]
-              covariatesi <- covariates[i,-timpos]
-              splnvalues <- splinecube(x, gammai, m, mpos)$spln
-              sur <-exp(-1*exp(as.matrix(covariatesi)%*%beta)*exp( splnvalues ))
-              rend <- rbind(rend, sur)
-            }
-            rend
           }
+         
+        ##avec strate 
+          if ("xlevels" %in% names(object)) {
+          
+            ##avec covariables
+              if(dim(object$x)[2] != 0){
+                
+                gammas <- matrix(object$coefficients[-(1:dim(object$x)[2])], ncol = length(object$xlevels[[1]]))
+                
+                flex_rel_strata_cov <- function(x, covariates, gammas, timecov, K=NULL) {
+                  n <- dim(covariates)[1]
+                  timpos <- dim(covariates)[2]
+                  rend <- data.frame()
+                  for (i in 1:n){
+                    timeval <- covariates[i,timpos]
+                    gammai <- gammas[,timeval]
+                    covariatesi <- covariates[i,-timpos]
+                    splnvalues <- splinecube(x, gammai, m, mpos)$spln
+                    sur <-exp(-1*exp(as.vector(covariatesi%*%beta))*exp( splnvalues ))
+                    rend <- rbind(rend, sur)
+                  }
+                  rend
+                }
+              }
+             
+            ##pas de covariables 
+              if(dim(object$x)[2] == 0){
+                
+                gammas <- matrix(object$coefficients, ncol = length(object$xlevels[[1]]))
+                
+                flex_rel_strata_nocov <- function(x, covariates, gammas, timecov, K=NULL) {
+                  n <- dim(covariates)[1]
+                  timpos <- dim(covariates)[2]
+                  rend <- data.frame()
+                  for (i in 1:n){
+                    timeval <- covariates[i,timpos]
+                    gammai <- gammas[,timeval]
+                    splnvalues <- splinecube(x, gammai, m, mpos)$spln
+                    sur <-exp(-1*exp( splnvalues ))
+                    rend <- rbind(rend, sur)
+                  }
+                  rend
+                }
+              }
+       }  
+      
+    }
+  
+    }
+  
+  if(type=="overall"){
+    
+    ## survivalNET
+      if ("dist" %in% names(object)) {
+        
+      ## pas de strate
+        if (!("xlevels" %in% names(object))){
+          
+          ##avec covariables
+              if(dim(object$x)[2] != 0){    
+            
+                net_ov_cov <- function(x) {
+              sapply(x, function(t) {
+                exp(exp(covariates %*% beta) * (1 - (1 + (t / sigma)^nu)^(1 / theta))) * 
+                  exp(-1 * sapply(1:dim(covariates)[1], 
+                                  FUN = function(i) {
+                                    expectedcumhaz(ratetable, object$ays$age[i], 
+                                                   object$ays$year[i], object$ays$sex[i], t,
+                                                   method = method)
+                                                    }))
+                                    })
+                                }
+            }
+           
+          ##pas de covariables 
+              if(dim(object$x)[2] == 0){
+              
+                net_ov_nocov <- function(x) {
+                sapply(x, function(t) {
+                  exp((1 - (1 + (t / sigma)^nu)^(1 / theta))) * 
+                    exp(-1 * sapply(1:dim(covariates)[1], 
+                                    FUN = function(i) {
+                                      expectedcumhaz(ratetable, object$ays$age[i], 
+                                                     object$ays$year[i], object$ays$sex[i], t, 
+                                                     method = method)
+                                    }))
+                })
+              }
+            }
+        
         }
         
-        if(dim(object$x)[2] == 0){
+      ## avec strate 
+        if ("xlevels" %in% names(object)){
           
-          gammas <- matrix(object$coefficients, ncol = length(object$xlevels[[1]]))
-          
-          fun8 <- function(x, covariates, gammas, timecov, K=NULL) {
-            n <- dim(covariates)[1]
-            timpos <- dim(covariates)[2]
-            rend <- data.frame()
-            for (i in 1:n){
-              timeval <- covariates[i,timpos]
-              gammai <- gammas[,timeval]
-              splnvalues <- splinecube(x, gammai, m, mpos)$spln
-              sur <-exp(-1*exp( splnvalues ))
-              rend <- rbind(rend, sur)
-            }
-            rend
-          }
+          ##avec covariables
+              if(dim(object$x)[2] != 0){
+                net_ov_strata_cov <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
+                  n <- dim(covariates)[1]
+                  timpos <- dim(covariates)[2]
+                  rend <- data.frame()
+                  for (i in 1:n){
+                    timeval <- covariates[i,timpos]
+                    covi <- covariates[i,-timpos]
+                    sigmak <- sigmas[timeval]
+                    nuk <- nus[timeval]
+                    thetak <- thetas[timeval]
+                    expected_values <- sapply(x, 
+                              FUN = function(t){expectedcumhaz(ratetable, object$ays$age[i], 
+                                                            object$ays$year[i], object$ays$sex[i], 
+                                                            t, method = method)})
+                    sur <- exp( exp(as.vector(covi%*%beta))*(1-(1+(x/sigmak)^nuk)^(1/thetak)))* 
+                      exp(-1 * expected_values)
+                    rend <- rbind(rend, sur)
+                  }
+                  rend
+                }
+              }
+            
+          ##pas de covariables
+              if(dim(object$x)[2] == 0){
+               
+                 net_ov_strata_nocov <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
+                  n <- dim(covariates)[1]
+                  timpos <- dim(covariates)[2]
+                  rend <- data.frame()
+                  for (i in 1:n){
+                    timeval <- covariates[i,timpos]
+                    sigmak <- sigmas[timeval]
+                    nuk <- nus[timeval]
+                    thetak <- thetas[timeval]
+                    expected_values <- sapply(x, 
+                                    FUN = function(t){expectedcumhaz(ratetable, object$ays$age[i], 
+                                                            object$ays$year[i], object$ays$sex[i], 
+                                         t, method = method)})
+                    sur <-exp( (1-(1+(x/sigmak)^nuk)^(1/thetak)))* 
+                      exp(-1 * expected_values)
+                    rend <- rbind(rend, sur)
+                  }
+                  rend
+                 } ##fin fonction
+                 
+              }
         }
-   }  
+      }
     
-  }
-  }
+    ## survivalFLEXNET
+      if("m" %in% names(object)){
+  
+        #valeurs de la spline
+        splnvalues <- splinecube(newtimes, gamma, m, mpos)$spln
+       
+        ## pas de strate    
+          if (!("xlevels" %in% names(object))){
+              
+            ##avec covariables
+              if(dim(object$x)[2] != 0){
+              
+            flex_ov_cov <- function(x) {
+              sapply(x, function(t, newtimes, splnvalues) {
+                exp(- exp(splnvalues[which(newtimes == t)] + as.matrix(covariates) %*% beta)) *
+                  exp(-1 * sapply(1:dim(covariates)[1], 
+                        FUN = function(i){
+                        expectedcumhaz(ratetable, object$ays$age[i], 
+                                       object$ays$year[i], object$ays$sex[i], t)}))
+              }, newtimes = newtimes, splnvalues = splnvalues)
+             }
+            }
+           
+            ##pas de covariables  
+              if(dim(object$x)[2] == 0){
+                
+                flex_ov_nocov <- function(x) {
+                  sapply(x, function(t) {
+                    exp(- exp( x ) ) * 
+                      exp(-1 * sapply(1:dim(covariates)[1], 
+                                      FUN = function(i){
+                                        expectedcumhaz(ratetable, object$ays$age[i], 
+                                                       object$ays$year[i], object$ays$sex[i], t)}))
+                  })
+                }
+              }
+              
+          }
+         
+        ## avec strate           
+          if ("xlevels" %in% names(object)){
+                
+            ##avec covariables
+              if(dim(object$x)[2] != 0){
+                  gammas <- matrix(object$coefficients[-(1:dim(object$x)[2])],
+                                   ncol = length(object$xlevels[[1]]))
+                  
+                  flex_ov_strata_cov <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
+                    n <- dim(covariates)[1]
+                    timpos <- dim(covariates)[2]
+                    rend <- data.frame()
+                    for (i in 1:n){
+                      timeval <- covariates[i,timpos]
+                      covi <- covariates[i,-timpos]
+                      gammai <- gammas[,timeval]
+    
+                      expected_values <- sapply(x, 
+                                   FUN = function(t){
+                                            expectedcumhaz(ratetable, object$ays$age[i], 
+                                            object$ays$year[i], object$ays$sex[i], 
+                                            t, method = method)})
+                      sur <- exp( exp(as.vector(covi%*%beta))*(1-(1+(x/sigmak)^nuk)^(1/thetak)))* 
+                        exp(-1 * expected_values)
+                      rend <- rbind(rend, sur)
+                    }
+                    rend
+                  }
+                }
+            
+            ##pas de covariables
+              if(dim(object$x)[2] == 0){
+              
+                  }
+        } 
+    }
+  
+    } 
   
   if(type=="lp") { ##enlever la covar strate de covariates pour ca 
-    fun <- function(x) { covariates %*% beta }
+    if ("xlevels" %in% names(object)){ 
+      covariates1 <- covariates[, -which(names(covariates) == names(object$xlevels))]
     }
     
-  if(type=="overall"){
-    if ("dist" %in% names(object)) {
-      fun9 <- function(x) {
-        sapply(x, function(t) {
-          exp(exp(covariates %*% beta) * (1 - (1 + (t / sigma)^nu)^(1 / theta))) * 
-            exp(-1 * sapply(1:dim(covariates)[1], 
-                            FUN = function(i) {
-                              expectedcumhaz(ratetable, age[i], year[i], sex[i], t)
-                            }))
-        })
-      }
-    }
-    if("m" %in% names(object)){
-      splnvalues <- splinecube(newtimes, gamma, m, mpos)$spln
-      fun10 <- function(x) {
-        sapply(x, function(t) {
-          exp(- exp(covariates %*% beta + x) ) * 
-            exp(-1 * sapply(1:dim(covariates)[1], 
-                            FUN = function(i) {
-                              expectedcumhaz(ratetable, age[i], year[i], sex[i], t)
-                            }))
-        })
-      }
-    } 
+      fun <- function(x) { covariates1 %*% beta }
   }
-      
-      
+  
   ###predictions 
   
   if (type == "relative"){
   
-  if ("dist" %in% names(object)) {
-      
-      if (!("xlevels" %in% names(object))){
-        
-        if(dim(object$x)[2] != 0){
-             predictions <- sapply(newtimes, FUN = "fun1")}
-        
-        if(dim(object$x)[2] == 0){
-             n <- dim(object$y)[1]
-             predictions <- data.frame(matrix(rep(fun2(newtimes), each = n), nrow = n, byrow = FALSE))}
-      }
-   
-      if ("xlevels" %in% names(object)){
+    ## survivalNET
+      if ("dist" %in% names(object)) {
+          
+        ##sans strate
+          if (!("xlevels" %in% names(object))){
+            
+            ##avec covariables
+              if(dim(object$x)[2] != 0){
+                
+                   predictions <- sapply(newtimes, FUN = "net_rel_cov")}
+            
+            ##sans covariables
+              if(dim(object$x)[2] == 0){
+              
+                 predictions <- data.frame(matrix(rep(net_rel_nocov(newtimes), each = n), nrow = n, byrow = FALSE))}
+          }
        
-         correstab <- object$correstab
-         timevar <- as.integer(unlist(covariates[names(object$xlevels)]))
-         timevarnum <- as.numeric(correstab[as.character(timevar)]) 
-         covariates[,dim(covariates)[2]] <- timevarnum
-         timecov <- names(object$xlevels)
+        ##avec strate
+          if ("xlevels" %in% names(object)){
            
-         K = sort(unique(timevarnum))
-      
-         if(dim(object$x)[2] != 0){
-         predictions <- fun3(x = newtimes, covariates = covariates,
-                            sigmas = sigmas, nus = nus, thetas = thetas,
-                            timecov = timecov, K = K)
-         }
-         if(dim(object$x)[2] == 0){
-           
-           predictions <- fun4(x = newtimes, covariates = covariates,
-                               sigmas = sigmas, nus = nus, thetas = thetas,
-                               timecov = timecov, K = K)
-           }
-     }
-    
+               correstab <- object$correstab
+               timevar <- as.integer(unlist(covariates[names(object$xlevels)]))
+               timevarnum <- as.numeric(correstab[as.character(timevar)]) 
+               covariates[,dim(covariates)[2]] <- timevarnum
+               timecov <- names(object$xlevels)
+                 
+               K = sort(unique(timevarnum))
+            
+             ##avec covariables
+               if(dim(object$x)[2] != 0){
+               
+                 predictions <- net_rel_strata_cov(x = newtimes, covariates = covariates,
+                                  sigmas = sigmas, nus = nus, thetas = thetas,
+                                  timecov = timecov, K = K)
+               }
+              
+             ##sans covariables
+               if(dim(object$x)[2] == 0){
+                 
+                 predictions <- net_rel_strata_nocov(x = newtimes, covariates = covariates,
+                                     sigmas = sigmas, nus = nus, thetas = thetas,
+                                     timecov = timecov, K = K)
+                 }
+          }
+        
       }
-  
-  if ("m" %in% names(object)) {
       
-      if (!("xlevels" %in% names(object))){
-        
-          if(dim(object$x)[2] != 0){
-              predictions <- sapply(splnvalues, FUN = "fun5")}
-          if(dim(object$x)[2] == 0){
-              n <- dim(object$y)[1]
-              predictions <- data.frame(matrix(rep(sapply(splnvalues, FUN = "fun6")
-                                        , each = n), nrow = n, byrow = FALSE))}
-         }
-    
-      if ("xlevels" %in% names(object)){
+    ## survivalFLEXNET
+      if ("m" %in% names(object)) {
           
-        correstab <- object$correstab
-        timevar <- as.integer(unlist(covariates[names(object$xlevels)]))
-        timevarnum <- as.numeric(correstab[as.character(timevar)]) 
-        covariates[,dim(covariates)[2]] <- timevarnum
-        timecov <- names(object$xlevels)
+        ##sans strate
+          if (!("xlevels" %in% names(object))){
+            
+             ##avec covariables
+                if(dim(object$x)[2] != 0){
+                    
+                  predictions <- sapply(splnvalues, FUN = "flex_rel_cov")}
+             
+             ##sans covariables 
+                if(dim(object$x)[2] == 0){
+                    
+                    predictions <- data.frame(matrix(rep(sapply(splnvalues, FUN = "flex_rel_nocov")
+                                              , each = n), nrow = n, byrow = FALSE))}
+             }
         
-        K = sort(unique(timevarnum))
-        
-          if(dim(object$x)[2] != 0){
-              n <- dim(object$y)[1]
-              predictions <- fun7(newtimes, covariates = 
-                                 covariates, gammas = gammas, timecov = 
-                                 timecov, K= K)}
-          
-          if(dim(object$x)[2] == 0){
-              n <- dim(object$y)[1]
-              predictions <- fun8(newtimes, covariates = 
-                                  covariates, gammas = gammas, timecov = 
-                                  timecov, K= K)}
-      }
+        ##avec strate
+          if ("xlevels" %in% names(object)){
+              
+              correstab <- object$correstab
+              timevar <- as.integer(unlist(covariates[names(object$xlevels)]))
+              timevarnum <- as.numeric(correstab[as.character(timevar)]) 
+              covariates[,dim(covariates)[2]] <- timevarnum
+              timecov <- names(object$xlevels)
+              
+              K = sort(unique(timevarnum))
+              
+              ##avec covariables
+                if(dim(object$x)[2] != 0){
+                    
+                    predictions <- flex_rel_strata_cov(newtimes, covariates = 
+                                       covariates, gammas = gammas, timecov = 
+                                       timecov, K= K)}
+              
+              ##sans covariables
+                if(dim(object$x)[2] == 0){
+                    
+                    predictions <- flex_rel_strata_nocov(newtimes, covariates = 
+                                        covariates, gammas = gammas, timecov = 
+                                        timecov, K= K)}
+          }
   } 
     
   predictions <- unname(cbind(rep(1, dim(predictions)[1]), predictions))
@@ -394,71 +603,97 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
   
   if (type == "overall"){
     
-    if ("dist" %in% names(object)) {
-      
-      if (!("xlevels" %in% names(object))){
+    ## survivalNET
+      if ("dist" %in% names(object)) {
         
-        if(dim(object$x)[2] != 0){
-          predictions <- sapply(newtimes, FUN = "fun9")}
+        ##sans strate
+          if (!("xlevels" %in% names(object))){
+            
+            ##avec covariables
+                if(dim(object$x)[2] != 0){
+                  
+                  predictions <- sapply(newtimes, FUN = "net_ov_cov")}
+              
+            ##sans covariables
+                if(dim(object$x)[2] == 0){
+                  
+                  predictions <- net_ov_nocov(newtimes)}
+          }
         
-        if(dim(object$x)[2] == 0){
-          n <- dim(object$y)[1]
-          predictions <- data.frame(matrix(rep(fun9(newtimes), each = n), nrow = n, byrow = FALSE))}
+        ##avec strate
+          if ("xlevels" %in% names(object)){
+            
+                correstab <- object$correstab
+                timevar <- as.integer(unlist(covariates[names(object$xlevels)]))
+                timevarnum <- as.numeric(correstab[as.character(timevar)]) 
+                covariates[,dim(covariates)[2]] <- timevarnum
+                timecov <- names(object$xlevels)
+                
+                K = sort(unique(timevarnum))
+              
+              ##avec covariables
+                if(dim(object$x)[2] != 0){
+                  
+                  predictions <- net_ov_strata_cov(x = newtimes, covariates = covariates,
+                                    sigmas = sigmas, nus = nus, thetas = thetas,
+                                    timecov = timecov, K = K)
+                }
+              
+              ##sans covariables
+                if(dim(object$x)[2] == 0){
+                  
+                  predictions <- net_ov_strata_nocov(x = newtimes, covariates = covariates,
+                                       sigmas = sigmas, nus = nus,
+                                       thetas = thetas, timecov = timecov, K = K)
+                }
+          }
+        
       }
       
-      if ("xlevels" %in% names(object)){
+    ## survivalFLEXNET
+      if ("m" %in% names(object)) {
         
-        correstab <- object$correstab
-        timevar <- as.integer(unlist(covariates[names(object$xlevels)]))
-        timevarnum <- as.numeric(correstab[as.character(timevar)]) 
-        covariates[,dim(covariates)[2]] <- timevarnum
-        timecov <- names(object$xlevels)
-        
-        K = sort(unique(timevarnum))
-        
-        predictions <- fun9(x = newtimes, covariates = covariates,
-                           sigmas = sigmas, nus = nus, thetas = thetas,
-                           timecov = timecov, K = K)
-      }
+        ##sans strate
+          if (!("xlevels" %in% names(object))){
+            
+             ##avec covariables
+                if(dim(object$x)[2] != 0){
+                  predictions <- flex_ov_cov(newtimes)
+                }
+             ##sans covariables
+                if(dim(object$x)[2] == 0){
+
+                  predictions <- sapply(splnvalues, FUN = "flex_ov_nocov")
+                                                       }
+          }
+          
+        ##avec strate
+          if ("xlevels" %in% names(object)){
+            
+                correstab <- object$correstab
+                timevar <- as.integer(unlist(covariates[names(object$xlevels)]))
+                timevarnum <- as.numeric(correstab[as.character(timevar)]) 
+                covariates[,dim(covariates)[2]] <- timevarnum
+                timecov <- names(object$xlevels)
+                
+                K = sort(unique(timevarnum))
+                
+              ##avec covariables  
+                if(dim(object$x)[2] != 0){
+
+                      predictions <- flex_ov_strata_cov(newtimes, covariates = 
+                                       covariates, gammas = gammas, timecov = 
+                                       timecov, K= K)}
+                
+              ##sans covariables
+                if(dim(object$x)[2] == 0){
+                  
+                  predictions <- flex_ov_strata_nocov(newtimes, covariates = 
+                                       covariates, gammas = gammas, timecov = 
+                                       timecov, K= K)}
+          }
+      } 
       
-    }
-    
-    if ("m" %in% names(object)) {
-      
-      if (!("xlevels" %in% names(object))){
-        
-        if(dim(object$x)[2] != 0){
-          predictions <- sapply(splnvalues, FUN = "fun10")}
-        if(dim(object$x)[2] == 0){
-          n <- dim(object$y)[1]
-          predictions <- data.frame(matrix(rep(sapply(splnvalues, FUN = "fun10")
-                                               , each = n), nrow = n, byrow = FALSE))}
-      }
-      
-      if ("xlevels" %in% names(object)){
-        
-        correstab <- object$correstab
-        timevar <- as.integer(unlist(covariates[names(object$xlevels)]))
-        timevarnum <- as.numeric(correstab[as.character(timevar)]) 
-        covariates[,dim(covariates)[2]] <- timevarnum
-        timecov <- names(object$xlevels)
-        
-        K = sort(unique(timevarnum))
-        
-        if(dim(object$x)[2] != 0){
-          n <- dim(object$y)[1]
-          predictions <- fun10(newtimes, covariates = 
-                               covariates, gammas = gammas, timecov = 
-                               timecov, K= K)}
-        
-        if(dim(object$x)[2] == 0){
-          n <- dim(object$y)[1]
-          predictions <- fun10(newtimes, covariates = 
-                               covariates, gammas = gammas, timecov = 
-                               timecov, K= K)}
-      }
-    } 
-    
     predictions <- unname(cbind(rep(1, dim(predictions)[1]), predictions))
     
   }
@@ -469,7 +704,11 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
   
   newtimes <- c(0, newtimes)
   
+  predictions <- as.data.frame(predictions)
+  names(predictions) <- newtimes
+  
   return(list(times=newtimes, predictions=predictions))
+  
   }
   
   
