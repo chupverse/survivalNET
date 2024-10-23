@@ -1,24 +1,27 @@
-\name{plot.survivalNET}
-\alias{plot.survivalNET}
+\name{cvFLEXNET}
+\alias{cvFLEXNET}
 
 \title{
-Calibration Plot for a Relative Survival Model with Additive Hazards
+Cross-validation method for a Flexible Relative Survival Model with Additive Hazards
 }
 \description{
-A calibration plot of an object of the class \code{survivalNET}.
+Cross-validation method for the hyper-parameters for an object of class \class{survivalFLEXNET}.
 }
 
 \usage{
-\method{plot}{survivalNET}(x, n.groups=5, pro.time=NULL,
-newdata=NULL, ratetable, ...)
+cvFLEXNET(formula, pro.time=NULL, data, ratetable, cv=10, 
+                             m = 2, mpos = NULL)
 }
 
 \arguments{
-  \item{x}{An object returned by the function \code{survivalNET}.}
+  \item{formula}{An object returned by the function \code{survivalNET}.}
    \item{n.groups}{A numeric value with the number of groups by their class probabilities. The default is 5.}
   \item{pro.time}{The prognostic time at which the calibration plot of the survival probabilities.}
     \item{newdata}{An optional data frame containing the new sample for validation with covariate values, follow-up times, and event status. The default value is \code{NULL}: the calibration plot is performed from the same subjects of the training sample.}
-\item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for the mortality of the French population, i.e. an array with three dimensions: age, year and sex.}
+\item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for the mortality of the French population, i.e. an array with three dimensions: age, sex and year.}
+\item{age}{A numeric vector with the patient age at baseline in days.}
+\item{year}{A numeric vector with the baseline date in the study respecting the date format: number of days since 01.01.1960.}
+\item{sex}{A character vector with the gender: "male" or "female".}
   \item{...}{Additional arguments affecting the plot.}
 }
 
