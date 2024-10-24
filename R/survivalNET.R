@@ -1,5 +1,6 @@
 
 survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
+
 {
   
   call = match.call()
@@ -94,6 +95,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
     if(!is.numeric(weights)) stop("Argument 'weights' must be a numeric vector")
     if(length(weights)!=dim(data)[1]) stop("Argument 'weights' must have the same length as the number of rows of the 'data' argument. (", dim(data)[1],")")}
   
+
   d <- cbind(time, event, cova, age, 1*(sex=="male"), year)
   na <- !is.na(apply(d, MARGIN=1, FUN = "sum"))
   
@@ -499,7 +501,6 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
                           row.names = label)
   }
   
-  
   names(t.table) <- c("coef", "exp(coef)", "se(coef)", "z", "p")
   
   coefficients <- t.table$coef
@@ -538,5 +539,6 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
   class(res) <- "survivalNET"
   return(res)
 }
+
 
 
