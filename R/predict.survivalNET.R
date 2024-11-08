@@ -462,7 +462,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
                   gammas <- matrix(object$coefficients[-(1:dim(object$x)[2])],
                                    ncol = length(object$xlevels[[1]]))
                   
-                  flex_ov_strata_cov <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
+                  flex_ov_strata_cov <- function(x, covariates, timecov, K) {
                     n <- dim(covariates)[1]
                     timpos <- dim(covariates)[2]
                     rend <- data.frame()
@@ -476,7 +476,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
                                             expectedcumhaz(ratetable, object$ays$age[i], 
                                             object$ays$year[i], object$ays$sex[i], 
                                             t, method = method)})
-                      sur <- exp( exp(as.vector(covi%*%beta))*(1-(1+(x/sigmak)^nuk)^(1/thetak)))* 
+                      sur <- exp( exp(as.vector(covi%*%beta))   ) * 
                         exp(-1 * expected_values)
                       rend <- rbind(rend, sur)
                     }
@@ -486,7 +486,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
             
             ##pas de covariables
               if(dim(object$x)[2] == 0){
-              
+                  flex_ov_strata_nocov <- function(x, covariates, timecov, K){} 
                   }
         } 
     }

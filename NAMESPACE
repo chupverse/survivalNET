@@ -12,13 +12,20 @@ importFrom("stats", "median", "optim", "pchisq", "pnorm", "predict",
   
 importFrom("graphics", "abline", "lines", "plot.default", "grid", "segments")
 
+importFrom("RISCA", "roc.time")
+
 #importFrom("lubridate", "period")
 
 export(survivalNET)
+export(survivalFLEXNET)
 export(expectedcumhaz)
 export(expectedhaz)
+export(cvFLEXNET)
+export(metrics)
+export(splinecube)
+export(splinecubeP)
 
 S3method(predict, survivalNET)
 S3method(print, survivalNET)
 S3method(plot, survivalNET)
-#S3method(summary, survivalNET)
+S3method(summary, survivalNET)

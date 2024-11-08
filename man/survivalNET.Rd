@@ -14,8 +14,9 @@ survivalNET(formula, data, ratetable, dist="weibull", weights=NULL)
 \arguments{
 \item{formula}{a formula object, with the response on the left of a ~ operator, and the terms on the
 right. The response must be a survival object as returned by the \code{Surv} function. On the right
-side, it is necessary to specify a '+\code{ratetable}(age = age, year = year, sex = sex)' term. The
-time must be in days.}
+side, it is necessary to specify a '+\code{ratetable}(age = age, year = year, sex = sex)' term where
+"age", "year" and "sex" must be the name of the the covariates in the dataframe that matches the
+ratetable. The time must be in days.}
 \item{data}{A data frame in which to look for the variables included in the \code{formula}.}
 \item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for the
 mortality of the French population, i.e. an array with three dimensions: age, sex and year.}

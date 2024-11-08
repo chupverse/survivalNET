@@ -17,7 +17,7 @@ expectedcumhaz(ratetable, age, year, sex, time, method="exact", subdivisions = 1
 \item{year}{A scalar with the baseline date  in days since 01.01.1960.}
 \item{sex}{A character vector with the gender: "male" or "female".}
 \item{time}{A scalar with the post-baseline time in days.}
-\item{method}{The type of estimation: "exact" for the sum of the hazard rates per day during the period from 0 to \code{time}, or "trapezoidal" for a numeric integration using the composite trapezoidal rule.}
+\item{method}{The type of estimation: "exact" for the sum of the hazard rates per day during the period from 0 to \code{time}, "trapezoidal" for a numeric integration using the composite trapezoidal rule or "table" for a sum of the hazard rate per year and age of the individual during the period from 0 to \code{time}.}
 \item{subdivisions}{A scalar with the number of trapazes if \code{method="trapezoidal"}.}
 }
 

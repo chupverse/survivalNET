@@ -61,7 +61,7 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
     return(list(age = age, year = year, sex = sex))
   }
   
-  ##différentiation quanti/quali
+  ##diff quanti/quali
   quali_col <- c()
   quanti_col <- c()
   warn <- 0
