@@ -10,7 +10,7 @@ Predict the net survival based on a model or an algorithm from an object of the 
 
 \usage{
 \method{predict}{survivalNET}(object, type="relative", newdata=NULL,
-      newtimes=NULL, ratetable = NULL, ...)
+      newtimes=NULL, ratetable = NULL, method = NULL, ...)
 }
 
 \arguments{
@@ -19,6 +19,7 @@ Predict the net survival based on a model or an algorithm from an object of the 
   \item{newdata}{An optional data frame containing covariate values at which to produce predicted values. There must be a column for every covariate included in the training sample. If \code{NULL} (the default value), the predicted values are computed for the subjects of the training sample.}
   \item{newtimes}{The times at which to produce predicted values. If \code{NULL} (the default value), the predicted values are computed for the observed times in the training data frame.}
   \item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for the mortality of the French population, i.e. an array with three dimensions: age, sex and year.}
+  \item{method}{Use for \code{type = "overall"}, the type of estimation used for the computing of the Expeceted Cumulative Hazard. Values can be "exact", "trapezoidal" or "table". (see "expectedcumhaz")}
   \item{...}{For future methods.}
 }
 

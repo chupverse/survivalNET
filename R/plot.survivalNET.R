@@ -3,30 +3,38 @@ plot.survivalNET <- function(x, n.groups=5, pro.time=NULL, newdata=NULL,
                              ratetable, age, year, sex,  ...)
 {
   if(is.null(pro.time))  { pro.time <- median(x$y[,1]) }
-  
-  if(is.null(newdata))
+ 
+   if(is.null(newdata))
     {
     cova <-data.frame(x$x)
     time <- x$y[,1];  event <- x$y[,2]
-    .age <- x$ays$age; .year <- x$ays$year; .sex <- x$ays$sex
+      .age <- x$ays$age; .year <- x$ays$year; .sex <- x$ays$sex
     }
   
   if(!is.null(newdata))
     {
     if(!is.data.frame(newdata)) stop("Argument 'newdata' must be a data frame")
     
-    indic <- gsub("\\+", "", attr(terms(x$formula), "term.labels") ) %in% names(newdata) 
+    covnames <- names(as.data.frame(x$x))
+    
+    indic <- c(as.character(x$formula[[2]][2]), as.character(x$formula[[2]][3]),
+               covnames,age, year, sex) %in% names(newdata) 
     if( sum(!indic) > 0 ) stop("Missing predictor in the data frame")
     
-    cova <- data.frame(newdata[,gsub("\\+", "", attr(terms(x$formula), "term.labels"))])
+    cova <- data.frame(newdata[,c(as.character(x$formula[[2]][2]), as.character(x$formula[[2]][3]),
+                                  covnames,age, year, sex)])
     time <- newdata[,as.character(x$formula[[2]][2])]
     event <- newdata[,as.character(x$formula[[2]][3])]
     .age <- newdata[,age]; .sex <- newdata[,sex]; .year <- newdata[,year]
     }
-  
+  if ("dist" %in% names(x)) {
   .pred <- predict(x, newdata=cova, newtimes=pro.time, type="relative")$predictions
   .pred <- .pred[,-1]
-  
+  }
+  if ("m" %in% names(x)) {
+    .pred <- predict(x, newdata=cova,, newtimes= c(1:(pro.time)), type="relative")$predictions
+    .pred <- .pred[,round(pro.time)]
+  }
   .grps <- as.numeric(cut(.pred,
                 breaks = c(-Inf, quantile(.pred, seq(1/n.groups, 1, 1/n.groups))),
                 labels = 1:n.groups))

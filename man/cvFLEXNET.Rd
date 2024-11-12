@@ -5,7 +5,7 @@
 Cross-validation method for a Flexible Relative Survival Model with Additive Hazards
 }
 \description{
-Cross-validation method for the hyper-parameters for an object of class \class{survivalFLEXNET}.
+Cross-validation method for the hyper-parameters for an object of class \code{survivalFLEXNET}.
 }
 
 \usage{
@@ -14,52 +14,36 @@ cvFLEXNET(formula, pro.time=NULL, data, ratetable, cv=10,
 }
 
 \arguments{
-  \item{formula}{An object returned by the function \code{survivalNET}.}
-   \item{n.groups}{A numeric value with the number of groups by their class probabilities. The default is 5.}
-  \item{pro.time}{The prognostic time at which the calibration plot of the survival probabilities.}
-    \item{newdata}{An optional data frame containing the new sample for validation with covariate values, follow-up times, and event status. The default value is \code{NULL}: the calibration plot is performed from the same subjects of the training sample.}
-\item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for the mortality of the French population, i.e. an array with three dimensions: age, sex and year.}
-\item{age}{A numeric vector with the patient age at baseline in days.}
-\item{year}{A numeric vector with the baseline date in the study respecting the date format: number of days since 01.01.1960.}
-\item{sex}{A character vector with the gender: "male" or "female".}
-  \item{...}{Additional arguments affecting the plot.}
+  \item{formula}{The \code{formula} object.}
+  \item{pro.time}{The prognostic time at which the metric is evaluated. If \code{NULL}, the median 
+  of the times in chosen.}
+  \item{data}{A data frame in which to look for the variables included in the \code{formula}.}
+  \item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for
+  the mortality of the French population, i.e. an array with three dimensions: age, sex and year.}
+  \item{cv}{The number of splits for cross-validation. The default value is 10.}
+  \item{m}{A numeric value of the number of internal knots wanted. The first and last knots are 
+automatically included, so there will be m+2 knots.}
+  \item{mpos}{A vector of the different knots positions. The positions are the percentiles and must be
+between \] 0:1\[. The first and last knots positions will be automatically chosen to be at the 
+0 and 1 percentile.}
 }
 
-\details{
-The plot represents the non-parametric net survival obtained by the Pohar-Perme estimator and the related 95\% confidence intervals, against the mean of the predictive values for individuals stratified into groups of the same size according to the percentiles. The identity line is usually included for reference.
+\value{
+\item{optimal}{A list giving the optimal value for each parameter.}
+\item{results}{A data frame listing the parameters combinaison and their metrics values.}
 }
-
-\value{No return value for this S3 method.}
 
 \examples{
 data(dataK) # the database with the observed sample
 data(fr.ratetable) # the table with the expected mortality rates
 
-# The multivariate PH regression with a Weibull distribution
+tune.FLEX = cvFLEXNET(Surv(time, event) ~ stade + delay + 
+    ratetable(age=age, year=year, sex=sexchara), data = dataK[1:100,],
+    ratetable=fr.ratetable, cv = 2, m = c(1,2))
 
-sNET <- survivalNET(Surv(time, event) ~ biomarker + sex + stade + delay + 
-                ratetable(age=age, year=year, sex=sexchara), data = dataK,
-                ratetable=fr.ratetable, dist="weibull")
+tune.FLEX$optimal
 
-# the calibration plots for predictions at 2, 4, 6 and 8 years
-
-par(mfrow=c(2, 2))
-
-plot(sNET, n.groups=4, pro.time=2*365.24, 
-  ratetable=fr.ratetable, age="age", sex="sexchara", year="diagnum",
-  main="Predction at 2 years")
-
-plot(sNET, n.groups=4, pro.time=4*365.24, 
-  ratetable=fr.ratetable, age="age", sex="sexchara", year="diagnum",
-  main="Predction at 4 years")
-
-plot(sNET, n.groups=4, pro.time=6*365.24, 
-  ratetable=fr.ratetable, age="age", sex="sexchara", year="diagnum",
-  main="Predction at 6 years")
-
-plot(sNET, n.groups=4, pro.time=8*365.24, 
-  ratetable=fr.ratetable, age="age", sex="sexchara", year="diagnum",
-  main="Predction at 8 years")
+tune.FLEX$results 
 }
 
 \seealso{

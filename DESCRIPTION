@@ -3,7 +3,7 @@ Type: Package
 Title: Relative and Net Survival Modeling
 Version: 0.11
 Depends: R (>= 4.0.0), splines, date, survival, relsurv
-Imports: methods, stats, graphics, dplyr
+Imports: methods, stats, graphics, dplyr, RISCA
 Description: Several functions and S3 methods to model net survival with flexible approaches: spline-based hazard function, non proportional hazards, etc.
 License: GPL (>=2)
 LazyLoad: yes
