@@ -144,10 +144,10 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
 
     if(length(xx$grid) == 1){
       m = xx$grid  
-      mpos = NULL
+      knots = NULL
     }else{
       m = xx$grid$m
-      mpos = unlist(xx$grid$mpos)
+      knots = unlist(xx$grid$knots)
     }
     data=xx$train
     newdata=xx$valid
@@ -223,9 +223,9 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
   .maxi<-.res[which(.res$measure==max(.res$measure, na.rm=TRUE) & is.na(.res$measure)==FALSE),]
   .maxi<-.maxi[1,]
   maxi_mpos <- as.numeric(unlist(strsplit(sub("^[^\\(]+\\((.*)\\)$", "\\1",
-                                              as.character(.maxi$mpos)), "," ))) 
+                                              as.character(.maxi$knots)), "," ))) 
   return( list(optimal=list(m=.maxi$m,
-                            mpos = maxi_mpos
+                            knots = maxi_mpos
                             ),
                results=.res ))
 }

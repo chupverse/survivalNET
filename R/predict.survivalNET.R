@@ -177,7 +177,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
        beta <- unname( object$coefficients[1:(dim(object$x)[2])] )
        gamma <- unname( object$coefficients[(dim(object$x)[2]+1):(dim(object$t.table)[1])] ) 
        m = object$m
-       mpos = object$mpos
+       mpos = object$knots
   }
   
   ### type 

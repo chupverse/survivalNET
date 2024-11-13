@@ -11,10 +11,11 @@ splinecube <- function(time, gamma, m, mpos = NULL)
                                 should be ", m+2)
   if(!is.null(mpos) & m != length(mpos))stop("number of internal knots
                                 positions must be equal to m=", m)
-  
+
   ##
   
-  x <- log(time)
+  x <- sort(log(time))
+
   
   if(is.null(mpos) == TRUE){
       a <- c()
@@ -46,7 +47,7 @@ splinecube <- function(time, gamma, m, mpos = NULL)
       
       res = list(
         spln = spln,
-        mpos = mpos,
+        knots = mpos,
         phi = phi,
         nu = nu)
   }

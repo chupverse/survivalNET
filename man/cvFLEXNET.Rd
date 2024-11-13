@@ -15,7 +15,7 @@ cvFLEXNET(formula, pro.time=NULL, data, ratetable, cv=10,
 
 \arguments{
   \item{formula}{The \code{formula} object.}
-  \item{pro.time}{The prognostic time at which the metric is evaluated. If \code{NULL}, the median 
+  \item{pro.time}{The prognostic time at which the metric is evaluated. Default value is \code{NULL} and if so, the median 
   of the times in chosen.}
   \item{data}{A data frame in which to look for the variables included in the \code{formula}.}
   \item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for
@@ -25,7 +25,7 @@ cvFLEXNET(formula, pro.time=NULL, data, ratetable, cv=10,
 automatically included, so there will be m+2 knots.}
   \item{mpos}{A vector of the different knots positions. The positions are the percentiles and must be
 between \] 0:1\[. The first and last knots positions will be automatically chosen to be at the 
-0 and 1 percentile.}
+0 and 1 percentile. Default is \code{NULL}, and if so, the knots positions will be chosen evenly through percentiles of log(times).}
 }
 
 \value{
@@ -38,7 +38,7 @@ data(dataK) # the database with the observed sample
 data(fr.ratetable) # the table with the expected mortality rates
 
 tune.FLEX = cvFLEXNET(Surv(time, event) ~ stade + delay + 
-    ratetable(age=age, year=year, sex=sexchara), data = dataK[1:100,],
+    ratetable(age=age, year=year, sex=sexchara), data = dataK[1:99,],
     ratetable=fr.ratetable, cv = 2, m = c(1,2))
 
 tune.FLEX$optimal
