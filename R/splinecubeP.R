@@ -7,14 +7,14 @@ splinecubeP <- function(time, gamma, m, mpos = NULL)
   if(length(time)<2)stop("length(time)<2. At least 2 times are necessary 
                                  to compute the spline")
   
-  if(length(gamma)!=(m+2))(stop("The length of the gamma's coefficients vector
-                                should be ", m+2))
+  if(length(gamma)!=(m+2))stop("The length of the gamma's coefficients vector
+                                should be ", m+2)
   if(!is.null(mpos) & m != length(mpos))(stop("number of internal knots
                                 positions must be equal to m=", m))
   
   ##
   
-  x <- log(time)
+  x <- sort(log(time))
   
   if(is.null(mpos) == TRUE){
     a <- c()
@@ -46,7 +46,7 @@ splinecubeP <- function(time, gamma, m, mpos = NULL)
     
     res <- list(
       spln = spln,
-      mpos = mpos,
+      knots = mpos,
       phi = phi,
       nu_prime = nu_prime)
   }

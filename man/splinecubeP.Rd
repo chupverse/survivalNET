@@ -20,7 +20,7 @@ automatically included, so there will be m+2 knots. The total number of knots sh
 the length of the coefficient vector.}
 \item{mpos}{A vector of the different knots positions. The positions are the percentiles and must be
 between ] 0:1[. The first and last knots positions will be automatically chosen to be at the 
-0 and 1 percentile. Default is NULL, and if so, the knots positions will be chosen evenly through percentiles of log(times).}
+0 and 1 percentile. Default is \code{NULL}, and if so, the knots positions will be chosen evenly through percentiles of log(times).}
 }
 
 \details{
@@ -39,7 +39,7 @@ and \deqn{\phi_j = \frac{k_{max}-k_j}{k_{max}-k_{min}}}
 
 \value{
 \item{spln}{The derivated spline values at the input times.}
-\item{mpos}{The position of the knots (including the first and last knot). Note that those are log(times), as the log-transformation is needed to compute the spline.}
+\item{knots}{The position of the knots (including the first and last knot). Note that those are log(times), as the log-transformation is needed to compute the spline.}
 \item{phi}{The \eqn{\phi_j} coefficients calculated with the knots positions.}
 \item{nu}{The values of \eqn{\nu'_j} for each log(times).}
 }
