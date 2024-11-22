@@ -27,7 +27,7 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
 
   all_terms <- attr(terms(formula), "term.labels")
   group_term <- grep("group\\(", all_terms, value = TRUE)
-  ratetable_terms <- grep("ratetable\\(", all_terms, value = TRUE)
+  ratetable_terms <- grep("^ratetable\\(", all_terms, value = TRUE)
   if(length(ratetable_terms) == 0) stop("Error: The formula must contain a ratetable() term.")
   if(length(ratetable_terms)>1) stop("More than one 'ratetable' term found in  the formula.")
   CV <- setdiff(all_terms, c(group_term, ratetable_terms))

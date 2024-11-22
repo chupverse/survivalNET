@@ -20,7 +20,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
   all_terms <- attr(terms(formula), "term.labels")
   strata_terms <- grep("strata\\(", all_terms, value = TRUE)
   if(length(strata_terms)>1) stop("More than one 'strata' term found in  the formula. Only one variable at a time can be stratified")
-  ratetable_terms <- grep("ratetable\\(", all_terms, value = TRUE)
+  ratetable_terms <- grep("^ratetable\\(", all_terms, value = TRUE)
   if(length(ratetable_terms) == 0) stop("Error: The formula must contain a ratetable() term.")
   if(length(ratetable_terms)>1) stop("More than one 'ratetable' term found in  the formula.")
   CV <- setdiff(all_terms, c(strata_terms, ratetable_terms))
