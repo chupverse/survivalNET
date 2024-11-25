@@ -14,7 +14,7 @@ splinecubeP <- function(time, gamma, m, mpos = NULL)
   
   ##
   
-  x <- sort(log(time))
+  x <- log(time)
   
   if(is.null(mpos) == TRUE){
     a <- c()

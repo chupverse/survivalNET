@@ -27,10 +27,12 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
 
   all_terms <- attr(terms(formula), "term.labels")
   group_term <- grep("group\\(", all_terms, value = TRUE)
+  strata_terms <- grep("strata\\(", all_terms, value = TRUE)
+  if(length(strata_terms)>1) stop("More than one 'strata' term found in  the formula. Only one variable at a time can be stratified")
   ratetable_terms <- grep("^ratetable\\(", all_terms, value = TRUE)
   if(length(ratetable_terms) == 0) stop("Error: The formula must contain a ratetable() term.")
   if(length(ratetable_terms)>1) stop("More than one 'ratetable' term found in  the formula.")
-  CV <- setdiff(all_terms, c(group_term, ratetable_terms))
+  CV <- setdiff(all_terms, c(group_term, strata_terms, ratetable_terms))
   if(length(CV) == 0){covnames = "1"} else{covnames <- CV}
 
   cova <- as.matrix(data[,CV])
@@ -102,11 +104,28 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
     CV = NULL
   }
   ####
+  strata_var = unlist(lapply(strata_terms, extract_vars))
+  if(!is.null(strata_var) && strata_var %in% covnames) stop("The stratified covariate also appears as a covariate in the formula.")
+  if(is.null(strata_var)){
+    timevar = strata_var
+    xlevels = NULL
+  }
+  if(!is.null(strata_var)){
+    timevar <- data[,strata_var]
+    xlevels <- list(levels(as.factor(timevar)))
+    names(xlevels) <- c(strata_var)
+  }
+  if(!is.null(timevar)){
+    if(length(unique(timevar))>15) stop("The variable with a time-dependant effect has too many categories (>15)")
+  }
+  
+  #######
+  
   ratetable_vars <- assign_ratetable_vars(unlist(lapply(ratetable_terms, extract_vars)))
   age <- ratetable_vars$age
   year <- ratetable_vars$year
   sexchara <- ratetable_vars$sex
-    data.net <- data[,c(times, failures, age, year, sexchara, group, CV)]
+    data.net <- data[,c(times, failures, age, year, sexchara, group, strata_var, CV)]
 
   if(is.null(pro.time)) {pro.time <- median(data[,times])}
 
@@ -140,7 +159,7 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
   }
 
   net.time.par<-function(xx, times, failures, ratetable, age, year, 
-                         sexchara,  group, CV, newtimes){
+                         sexchara, group, strata_var, CV, newtimes){
 
     if(length(xx$grid) == 1){
       m = xx$grid  
@@ -155,13 +174,12 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
     if(!(is.null(group))){
       .data <- data[,c(times, failures, age, year, sexchara, group, CV)]}   else{
         .data <- data[,c(times, failures, age, year, sexchara, CV)] }
-
-    if(!is.null(group)){
-      .outcome <- paste("Surv(", times, ",", failures, ")")
-      .f <- as.formula( paste(.outcome, "~", paste( CV,  collapse = " + "), "+", group) )
-    }else{
-      .f <- formula
-    }
+    
+    if(!(is.null(strata_var))){
+      .data <- cbind(.data, data[, strata_var])
+      colnames(.data)[length(.data)] <- strata_var
+    }else{ 
+      .data <- .data}
 
     .net <- survivalFLEXNET(.f, data = .data,
                     m = m, mpos = mpos, ratetable = ratetable)
@@ -189,7 +207,7 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
   .preFIT<-list()
   .preFIT<-lapply(.CVtune, net.time.par, times=times, failures=failures, 
                   ratetable = ratetable, age= age, year = year, sexchara = sexchara,
-                  group=group, CV = CV, newtimes=.time)
+                  group=group, strata_var=strata_var, CV = CV, newtimes=.time)
 
   .FitCV <- replicate(dim(.grid)[1], matrix(NA, nrow = length(data[,times]),
                                             ncol = length(.time)), simplify=F)
