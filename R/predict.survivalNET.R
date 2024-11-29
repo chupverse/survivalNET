@@ -10,7 +10,8 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
   
   if(is.null(newtimes))  { newtimes <- 1:max(object$y[,1]) }
   
-  if(!is.null(newtimes))  {newtimes <- unique(newtimes)}
+  if(!is.null(newtimes))  {newtimesSave <- newtimes
+                           newtimes <- sort(c((1:max(object$y[,1])),unique(newtimes)))}
   
   if(0 %in% newtimes){
       newtimes <- sort(newtimes[-(newtimes == 0)])
@@ -707,6 +708,12 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
   
   predictions <- as.data.frame(predictions)
   names(predictions) <- newtimes
+  
+  if(!is.null(newtimesSave)){
+    predictions <- predictions[,c(as.character(newtimesSave)) ]
+    
+    newtimes <- newtimesSave
+  }
   
   return(list(times=newtimes, predictions=predictions))
   

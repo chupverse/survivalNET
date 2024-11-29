@@ -376,6 +376,9 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
   }else{solve(logllmax0$hessian)}
   loglik <- if(!is.null(covnames) || (is.null(covnames) & !is.null(timevar)) ){c(-1*logllmax1$value, -1*logllmax0$value)
   }else{-1*logllmax0$value}
+  if(length(loglik)==2){names(loglik) <- c("Model", "Null model")}else{
+    names(loglik) <- c("Null Model")
+  }
   
   res <- list(
     formula = formula,
