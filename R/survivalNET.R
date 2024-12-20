@@ -184,7 +184,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", init = NULL, d
         if(delta_th == 0){
           if(delta == delta_th) {indic = indic + 1}
         }else{ 
-          if(delta <= delta_th) {indic = indic + 1}
+          if(0 < delta & delta <= delta_th) {indic = indic + 1}
         }
       }
       
@@ -317,7 +317,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", init = NULL, d
         if(delta_th == 0){
           if(delta == delta_th) {indic = indic + 1}
         }else{ 
-          if(delta <= delta_th) {indic = indic + 1}
+          if(0 < delta & delta <= delta_th) {indic = indic + 1}
         }
       }
       
@@ -446,7 +446,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", init = NULL, d
         if(delta_th == 0){
           if(delta == delta_th) {indic = indic + 1}
         }else{ 
-          if(delta <= delta_th) {indic = indic + 1}
+          if(0 < delta & delta <= delta_th) {indic = indic + 1}
         }
       }
       
@@ -540,7 +540,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", init = NULL, d
       if(delta_th == 0){
         if(delta == delta_th) {indic = indic + 1}
       }else{ 
-        if(delta <= delta_th) {indic = indic + 1}
+        if(0 < delta & delta <= delta_th) {indic = indic + 1}
       }    }
     
     logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 

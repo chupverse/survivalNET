@@ -1,6 +1,6 @@
 
-survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = NULL, delta_th = 0, 
-                            weights=NULL)
+survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = NULL, 
+                            delta_th = 0, weights=NULL)
 {
   
   ####### check errors
@@ -144,7 +144,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
       if(delta_th == 0){
         if(delta == delta_th) {indic = indic + 1}
       }else{ 
-        if(delta <= delta_th) {indic = indic + 1}
+        if(0 < delta & delta <= delta_th) {indic = indic + 1}
       }      }
     
     logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
@@ -227,7 +227,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
       if(delta_th == 0){
         if(delta == delta_th) {indic = indic + 1}
       }else{ 
-        if(delta <= delta_th) {indic = indic + 1}
+        if(0 < delta & delta <= delta_th) {indic = indic + 1}
       }      }
     
     tryCatch({logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, 
@@ -309,7 +309,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
         if(delta_th == 0){
           if(delta == delta_th) {indic = indic + 1}
         }else{ 
-          if(delta <= delta_th) {indic = indic + 1}
+          if(0 < delta & delta <= delta_th) {indic = indic + 1}
         }        }
       
       tryCatch({logllmax1 <- optim(par = logllmax1$par, fn = loglik3, time = time, 
@@ -361,7 +361,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
     if(delta_th == 0){
       if(delta == delta_th) {indic = indic + 1}
     }else{ 
-      if(delta <= delta_th) {indic = indic + 1}
+      if(0 < delta & delta <= delta_th) {indic = indic + 1}
     }  
     }
   

@@ -8,7 +8,7 @@ Parametric Net survival
 This function allows to compute a parametric regression for modelling net survival.
 }
 \usage{
-survivalNET(formula, data, ratetable, dist="weibull", weights=NULL)
+survivalNET(formula, data, ratetable, dist="weibull", init=NULL, delta_th=0, weights=NULL)
 }
 
 \arguments{
@@ -22,6 +22,12 @@ ratetable. The time must be in days.}
 mortality of the French population, i.e. an array with three dimensions: age, sex and year.}
 \item{dist}{A character string listed in the following table to define the baseline hazard function.
 By default, the Weibull distribution is used.}
+\item{init}{A numeric vector of the initial parameters values for the optimization process. Default
+is set to NULL, which means that all parameters values will be set to 0.}
+\item{delta_th}{A threshold value from which the optimization process stops. Default is set to 0. 
+If 0, the difference between the log-likelihood values in the optimization process must be 0. 
+If another value is chosen, the difference must be less than equal than this value. See 
+\code{details} for the optimization process.}
 \item{weights}{A numeric vector for a weighted likelihood, i.e. different contributions of 
 individuals. By default, the weights equal 1.}
 }
@@ -34,6 +40,15 @@ the study, must be of class 'date' under the date format: number of days since 0
 \cr
 It is possible to stratify on a categorical covariate by adding a '+\code{strata}(timevar)' term on
 the right side of the formula.
+\cr
+\cr
+The optimization process is a made so that, from initial values, the parameters are estimated with 
+the \code{optim} function. The estimated parameters are then re-used as the initial parameters of
+an optimization process, and while the difference between the old log-likelihood value and the new
+log-likelihood value is different than 0 (or the value chosen with delta_th), the process continue.
+When the difference value is below the threshold or equal to 0 five times, the process stops and the
+optmization process is done one last time with those initial parameters to get the final estimated 
+parameters.
 \cr
 \cr
 The following hazard functions available are:   
@@ -86,7 +101,7 @@ plot(PPest)
 
 sNET <- survivalNET(Surv(time, event) ~ stade + delay + ratetable(age = age, year = year, 
                     sex = sexchara), data = dataK, ratetable=fr.ratetable,
-                    dist="weibull")
+                    dist="weibull", init = NULL, delta_th = 0, weights = NULL)
 
 sNET.pred <- predict(sNET, newdata=data.frame( stade=c(0,0,1,1), delay=c(0,1,0,1) ) )
 

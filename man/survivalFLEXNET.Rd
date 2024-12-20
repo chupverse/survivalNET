@@ -8,7 +8,8 @@ Flexible Parametric Net survival
 This function allows to compute a flexible regression with splines for modelling net survival.
 }
 \usage{
-survivalFLEXNET(formula, data, ratetable, m=3, mpos = NULL, weights=NULL)
+survivalFLEXNET(formula, data, ratetable, m=3, mpos = NULL, init=NULL, delta_th=0,
+weights=NULL)
 }
 
 \arguments{
@@ -24,6 +25,12 @@ automatically included, so there will be m+2 knots.}
 \item{mpos}{A vector of the different knots positions. The positions are the percentiles and must be
 between \] 0:1\[. The first and last knots positions will be automatically chosen to be at the 
 0 and 1 percentile. Default is NULL, and if so, the knots positions will be chosen evenly through percentiles of log(times).}
+\item{init}{A numeric vector of the initial parameters values for the optimization process. Default
+is set to NULL, which means that all parameters values will be set to 0.}
+\item{delta_th}{A threshold value from which the optimization process stops. Default is set to 0. 
+If 0, the difference between the log-likelihood values in the optimization process must be 0. 
+If another value is chosen, the difference must be less than equal than this value. See 
+\code{details} for the optimization process.}
 \item{weights}{A numeric vector for a weighted likelihood, i.e. different contributions of 
 individuals. By default, the weights equal 1.}
 }
@@ -38,15 +45,14 @@ It is possible to stratify on a categorical covariate by adding a '+\code{strata
 the right side of the formula.
 \cr
 \cr
-The following hazard functions available are:   
-\tabular{rrl}{
-exponential \tab Exponential distribution \tab \eqn{\lambda(t)=1/\sigma} \cr											
-weibull \tab Weibull distribution \tab \eqn{\lambda(t)=\nu(\frac{1}{\sigma})^{\nu}t^{\nu-1}} \cr
-gebweibull \tab Generalized Weibull distribution \tab \eqn{\lambda(t)=\frac{1}{\theta}\left(1+\left(
-\frac{t}{\sigma}\right)^{\nu}\right)^{\frac{1}{\theta}-1} \nu\left(\frac{1}{\sigma}\right)^{\nu} 
-t^{\nu-1}}
-}
-with \eqn{\sigma}, \eqn{\nu},and \eqn{\theta>0}. 
+The optimization process is a made so that, from initial values, the parameters are estimated with 
+the \code{optim} function. The estimated parameters are then re-used as the initial parameters of
+an optimization process, and while the difference between the old log-likelihood value and the new
+log-likelihood value is different than 0 (or the value chosen with delta_th), the process continue.
+When the difference value is below the threshold or equal to 0 five times, the process stops and the
+optmization process is done one last time with those initial parameters to get the final estimated 
+parameters.
+
 }
 
 \value{
@@ -89,7 +95,7 @@ plot(PPest)
 
 sNET <- survivalNET(Surv(time, event) ~ stade + delay + ratetable(age = age, year = year, 
                     sex = sexchara), data = dataK, ratetable=fr.ratetable,
-                    dist="weibull")
+                    dist="weibull", init = NULL, delta_th = 0, weights = 0)
 
 sNET.pred <- predict(sNET, newdata=data.frame( stade=c(0,0,1,1), delay=c(0,1,0,1) ) )
 
