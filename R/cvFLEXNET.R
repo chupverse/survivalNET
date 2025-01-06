@@ -68,35 +68,6 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
     if(!is.list(init))stop("'init' must be a list of length  ", length(m))
     if(length(init) != length(m))stop("'init' must be a list of length  ", length(m))
   }
-##diff quanti/quali
-  quali_col <- c()
-  quanti_col <- c()
-  warn <- 0
-  col_warn <- c()
-  
-  for (col in CV) {
-    
-    unique_values <- unique(as.data.frame(cova)[[col]])
-    
-    if (length(unique_values) == 2 && !all(unique_values %in% c(0, 1))) {
-      warn <- warn + 1
-      col_warn <- c(col_warn, col)
-    }
-    
-    if (all(unique_values %in% c(0, 1))) {
-      quali_col <- c(quali_col, col)
-    } else if (length(unique_values) > 2) {
-      quanti_col <- c(quanti_col, col)
-    }
-  }
-  if (warn > 0) {
-    warning(paste(warn, "columns have exactly 2 modalities but are not 0 and 1. (",col_warn,"). Those
-                  columns have been considered as quantitative variables."))
-  }
-  
-  cov.quali <- quali_col
-  cov.quanti <- quanti_col
-  
   
   if(length(group_term) == 0){
     group = NULL
@@ -167,7 +138,7 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
   l<-1
   for (k in 1:cv){
     for (j in 1:dim(.grid)[1]){
-      .CVtune[[l]]<-list(train=data.net[data.net$folds!=k, ], valid=data.net[data.net$folds==k, ], grid=.grid[j,], correstab = correstab[j,"init"])
+      .CVtune[[l]]<-list(train=data.net[data.net$folds!=k, ], valid=data.net[data.net$folds==k, ], grid=.grid[j,], init = correstab[j,"init"])
       l=l+1
     }
   }
@@ -183,7 +154,7 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
       knots = unlist(xx$grid$knots)
     }
     
-    init = unlist(xx$correstab)
+    init = unlist(xx$init)
     
     data=xx$train
     newdata=xx$valid
