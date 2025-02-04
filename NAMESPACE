@@ -1,5 +1,4 @@
 import(splines)
-import(date)
 import(survival)
 import(relsurv)
 

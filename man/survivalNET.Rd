@@ -34,7 +34,7 @@ individuals. By default, the weights equal 1.}
 
 \details{
 NOTE : For the ratetable, \code{age} at baseline must be in days, \code{year}, the baseline date in
-the study, must be of class 'date' under the date format: number of days since 01.01.1960 and 
+the study, can be of class 'numeric', 'Date', 'POSIXt' or 'date' under the date format: number of days since 01.01.1960 and 
 \code{sex} must be of class 'character' with genders : 'male' or 'female'. 
 \cr
 \cr

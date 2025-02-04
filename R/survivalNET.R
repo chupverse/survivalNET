@@ -92,7 +92,8 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", init = NULL, d
   if(max(age)<30) stop("The ages must be expressed in days (max(", as.character(formula[[2]][2]),") is less than 30 days).")
   if(!is.character(sex)) stop("'sex' must be a character string")
   if(min(names(table(sex)) %in% c("female","male", NA))==0) stop("Argument 'sex' must be 'male' or 'female'")
-  if(!is.date(year)) stop("The values for 'year' must be of the 'date' class")
+  # if(!is.date(year)) stop("The values for 'year' must be of the 'date' class")
+  if(!(is.numeric(year) || inherits(year, "Date") || inherits(year, "POSIXct") || inherits(year, "POSIXlt")))stop("'year' must be of class numeric, Date, POSIXct, or POSIXlt.")
   if(!is.null(weights)){
     if(!is.numeric(weights)) stop("Argument 'weights' must be a numeric vector")
     if(length(weights)!=dim(data)[1]) stop("Argument 'weights' must have the same length as the number of rows of the 'data' argument. (", dim(data)[1],")")}
