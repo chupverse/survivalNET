@@ -4,7 +4,7 @@
 expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subdivisions = 100)
 {
   if(method=="exact") {
-    .year <- date.mdy(year+(1:time))$year
+    .year <- as.numeric(format( as.Date((1:time) + year, origin = "1960-01-01"), "%Y" ) ) 
     .temp <- diag(
       ratetable[as.character( pmin( floor( (age + (1:time) )/365.24), max(as.numeric(names(ratetable[, "2000", "male"]))) ) ),
             as.character( pmin( .year, max(as.numeric(names(ratetable["51", , "male"]))) ) ),
@@ -94,7 +94,7 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
          haz_values <- c(haz_values,
                        ratetable[as.character( pmin(floor(age/365.24 + i +j ),
                                 max(as.numeric(names(ratetable[, "2000", "male"])))) ),
-                                as.character( pmin(date.mdy(year)$year + i,
+                                as.character( pmin( as.numeric(format( as.Date(year, origin = "1960-01-01"), "%Y" ) )  + i,
                                 max(as.numeric(names(ratetable["51", , "male"])))) ),
                                 sex])
        }
@@ -109,7 +109,7 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
         for (j in 0:1) {
           haz_values <- c(haz_values,
                           ratetable[as.character( floor(age/365.24 + i ) ),
-                                    as.character( date.mdy(year)$year + i+j) ,sex])
+                                    as.character( as.numeric(format( as.Date(year, origin = "1960-01-01"), "%Y" ) )  + i+j) ,sex])
         }
       }
       if (pair == FALSE){haz_values <- haz_values[-length(haz_values)]}  

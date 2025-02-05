@@ -90,7 +90,6 @@ plot.survivalNET <- function(x, n.groups=5, pro.time=NULL, newdata=NULL,
    segments(x0 = .est, y0 = .lower, x1 = .est, y1 = .upper, col = col, lwd = lwd)
   }
 
-# plot(mod1, n.groups=5, ratetable=fr.ratetable)
 
 
 

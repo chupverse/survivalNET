@@ -10,7 +10,8 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
   
   if(is.null(newtimes))  { newtimes <- 1:max(object$y[,1]) }
   
-  if(!is.null(newtimes))  {newtimes <- unique(newtimes)}
+  if(!is.null(newtimes))  {newtimesSave <- newtimes
+                           newtimes <- sort(c((1:max(object$y[,1])),unique(newtimes)))}
   
   if(0 %in% newtimes){
       newtimes <- sort(newtimes[-(newtimes == 0)])
@@ -287,7 +288,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
                     gammai <- gammas[,timeval]
                     covariatesi <- covariates[i,-timpos]
                     splnvalues <- splinecube(x, gammai, m, mpos)$spln
-                    sur <-exp(-1*exp(as.vector(covariatesi%*%beta))*exp( splnvalues ))
+                    sur <-exp(-1*exp(as.vector(as.numeric(covariatesi)%*%beta))*exp( splnvalues ))
                     rend <- rbind(rend, sur)
                   }
                   rend
@@ -380,7 +381,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
                               FUN = function(t){expectedcumhaz(ratetable, object$ays$age[i], 
                                                             object$ays$year[i], object$ays$sex[i], 
                                                             t, method = method)})
-                    sur <- exp( exp(as.vector(covi%*%beta))*(1-(1+(x/sigmak)^nuk)^(1/thetak)))* 
+                    sur <- exp( exp(as.vector(as.numeric(covi)%*%beta))*(1-(1+(x/sigmak)^nuk)^(1/thetak)))* 
                       exp(-1 * expected_values)
                     rend <- rbind(rend, sur)
                   }
@@ -526,12 +527,12 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
           if ("xlevels" %in% names(object)){
            
                correstab <- object$correstab
-               timevar <- as.integer(unlist(covariates[names(object$xlevels)]))
-               timevarnum <- as.numeric(correstab[as.character(timevar)]) 
-               covariates[,dim(covariates)[2]] <- timevarnum
-               timecov <- names(object$xlevels)
-                 
-               K = sort(unique(timevarnum))
+                timevar <- as.character(unlist(covariates[names(object$xlevels)]))
+                timevarnum <- as.numeric(correstab[timevar]) 
+                covariates[,dim(covariates)[2]] <- timevarnum
+                timecov <- names(object$xlevels)
+                
+                K = sort(unique(timevarnum))
             
              ##avec covariables
                if(dim(object$x)[2] != 0){
@@ -573,20 +574,21 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
         ##avec strate
           if ("xlevels" %in% names(object)){
               
-              correstab <- object$correstab
-              timevar <- as.integer(unlist(covariates[names(object$xlevels)]))
-              timevarnum <- as.numeric(correstab[as.character(timevar)]) 
-              covariates[,dim(covariates)[2]] <- timevarnum
-              timecov <- names(object$xlevels)
-              
-              K = sort(unique(timevarnum))
+            correstab <- object$correstab
+            timevar <- as.character(unlist(covariates[names(object$xlevels)]))
+            timevarnum <- as.numeric(correstab[timevar]) 
+            covariates[,dim(covariates)[2]] <- timevarnum
+            timecov <- names(object$xlevels)
+            
+            K = sort(unique(timevarnum))
               
               ##avec covariables
                 if(dim(object$x)[2] != 0){
                     
                     predictions <- flex_rel_strata_cov(newtimes, covariates = 
                                        covariates, gammas = gammas, timecov = 
-                                       timecov, K= K)}
+                                       timecov, K= K)
+                    }
               
               ##sans covariables
                 if(dim(object$x)[2] == 0){
@@ -623,13 +625,13 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
         ##avec strate
           if ("xlevels" %in% names(object)){
             
-                correstab <- object$correstab
-                timevar <- as.integer(unlist(covariates[names(object$xlevels)]))
-                timevarnum <- as.numeric(correstab[as.character(timevar)]) 
-                covariates[,dim(covariates)[2]] <- timevarnum
-                timecov <- names(object$xlevels)
-                
-                K = sort(unique(timevarnum))
+            correstab <- object$correstab
+            timevar <- as.character(unlist(covariates[names(object$xlevels)]))
+            timevarnum <- as.numeric(correstab[timevar]) 
+            covariates[,dim(covariates)[2]] <- timevarnum
+            timecov <- names(object$xlevels)
+            
+            K = sort(unique(timevarnum))
               
               ##avec covariables
                 if(dim(object$x)[2] != 0){
@@ -670,13 +672,13 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
         ##avec strate
           if ("xlevels" %in% names(object)){
             
-                correstab <- object$correstab
-                timevar <- as.integer(unlist(covariates[names(object$xlevels)]))
-                timevarnum <- as.numeric(correstab[as.character(timevar)]) 
-                covariates[,dim(covariates)[2]] <- timevarnum
-                timecov <- names(object$xlevels)
-                
-                K = sort(unique(timevarnum))
+            correstab <- object$correstab
+            timevar <- as.character(unlist(covariates[names(object$xlevels)]))
+            timevarnum <- as.numeric(correstab[timevar]) 
+            covariates[,dim(covariates)[2]] <- timevarnum
+            timecov <- names(object$xlevels)
+            
+            K = sort(unique(timevarnum))
                 
               ##avec covariables  
                 if(dim(object$x)[2] != 0){
@@ -706,6 +708,12 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
   
   predictions <- as.data.frame(predictions)
   names(predictions) <- newtimes
+  
+  if(!is.null(newtimesSave)){
+    predictions <- predictions[,c(as.character(newtimesSave)) ]
+    
+    newtimes <- newtimesSave
+  }
   
   return(list(times=newtimes, predictions=predictions))
   

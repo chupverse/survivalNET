@@ -10,7 +10,8 @@ Cross-validation method for the hyper-parameters for an object of class \code{su
 
 \usage{
 cvFLEXNET(formula, pro.time=NULL, data, ratetable, cv=10, 
-                             m = 2, mpos = NULL)
+                             m = 2, mpos = NULL, init = NULL,
+                             delta_th = 0, weights = NULL)
 }
 
 \arguments{
@@ -26,6 +27,13 @@ automatically included, so there will be m+2 knots.}
   \item{mpos}{A vector of the different knots positions. The positions are the percentiles and must be
 between \] 0:1\[. The first and last knots positions will be automatically chosen to be at the 
 0 and 1 percentile. Default is \code{NULL}, and if so, the knots positions will be chosen evenly through percentiles of log(times).}
+\item{init}{A numeric vector of the initial parameters values for the optimization process. Default
+is set to NULL, which means that all parameters values will be set to 0.}
+\item{delta_th}{A threshold value from which the optimization process stops. Default is set to 0. 
+If 0, the difference between the log-likelihood values in the optimization process must be 0. 
+If another value is chosen, the difference must be less than equal than this value. See \code{details} of \code{survivalFLEXNET} for the optimization process.}
+\item{weights}{A numeric vector for a weighted likelihood, i.e. different contributions of 
+individuals. By default, the weights equal 1.}
 }
 
 \value{

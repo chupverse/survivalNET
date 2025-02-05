@@ -1,6 +1,6 @@
 
-survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, 
-                            weights=NULL)
+survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = NULL, 
+                            delta_th = 0, weights=NULL)
 {
   
   ####### check errors
@@ -12,7 +12,9 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
   if (as.character(class(data)) != "data.frame") stop("The second argument must be a data frame")
   if (length(dim(ratetable))!=3) stop("The life table must have 3 dimensions: age, year, sex")
   if (dim(ratetable)[3]!=2) stop("The life table must have 3 dimensions: age, year, sex")
-  
+  if(!is.null(init)){if(!is.numeric(init))stop("Argument 'init' must be a vector of numeric values.") }
+  if(!is.numeric(delta_th))stop("'delta_th' must be numeric.")
+  if(length(delta_th) != 1) stop("'delta_th' must be a single value.") 
   ####### data management
   
   time <- data[,as.character(formula[[2]][2])] 
@@ -20,7 +22,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
   all_terms <- attr(terms(formula), "term.labels")
   strata_terms <- grep("strata\\(", all_terms, value = TRUE)
   if(length(strata_terms)>1) stop("More than one 'strata' term found in  the formula. Only one variable at a time can be stratified")
-  ratetable_terms <- grep("ratetable\\(", all_terms, value = TRUE)
+  ratetable_terms <- grep("^ratetable\\(", all_terms, value = TRUE)
   if(length(ratetable_terms) == 0) stop("Error: The formula must contain a ratetable() term.")
   if(length(ratetable_terms)>1) stop("More than one 'ratetable' term found in  the formula.")
   CV <- setdiff(all_terms, c(strata_terms, ratetable_terms))
@@ -77,7 +79,8 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
   if(max(age)<30) stop("The ages must be expressed in days (max(", as.character(formula[[2]][2]),") is less than 30 days).")
   if(!is.character(sex)) stop("'sex' must be a character string")
   if(min(names(table(sex)) %in% c("female","male", NA))==0) stop("'sex' must be 'male' or 'female'")
-  if(!is.date(year)) stop("The values for 'year' must be of the 'date' class")
+  # if(!is.date(year)) stop("The values for 'year' must be of the 'date' class")
+  if(!(is.numeric(year) || inherits(year, "Date") || inherits(year, "POSIXct") || inherits(year, "POSIXlt")))stop("'year' must be of class numeric, Date, POSIXct, or POSIXlt.")
   if(!is.null(weights)){
     if(!is.numeric(weights)) stop("Argument 'weights' must be a numeric vector")
     if(length(weights)!=dim(data)[1]) stop("Argument 'weights' must have the same length as the number of rows of the 'data' argument. (", dim(data)[1],")")}
@@ -117,7 +120,11 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
     label <- c(covnames, "gamma0",
                    "gamma1", gamma_names)
     
-    init1 <- c(rep(0,dim(cova)[2]+m+2))
+    if(!is.null(init)){
+      if(length(init) != dim(cova)[2]+m+2) stop("'init' length must be ", dim(cova)[2]+m+2,
+                                      " ( ", dim(cova)[2]," covariate(s) and ",m+2," parameters for the Restricted Cubic Spline).")
+      init1 <- init
+    }else{init1 <- c(rep(0,dim(cova)[2]+m+2))}
     
     loglik1 <- function(par, time, event, cova, hP, w, m, mpos){
       beta <- par[1:dim(cova)[2]]
@@ -135,8 +142,11 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
                          event = event, cova = cova, hP = hP, w = weights,
                          m = m, mpos = mpos)
       delta <- ll_val - logllmax1$value
-      if(delta ==0) {indic = indic + 1}
-    }
+      if(delta_th == 0){
+        if(delta == delta_th) {indic = indic + 1}
+      }else{ 
+        if(0 < delta & delta <= delta_th) {indic = indic + 1}
+      }      }
     
     logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
                        event = event, cova = cova, hP = hP, w = weights,
@@ -190,7 +200,11 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
       label <- c(label, paste0("gamma", i, "_0"), paste0("gamma", i, "_1"), get(paste0("gamma_names", i)))
     }
     
-    init1 <- c(rep(0,dim(cova)[2]+(length(K)*(m+2))))
+    if(!is.null(init)){
+      if(length(init) != dim(cova)[2]+(length(K)*(m+2))) stop("'init' length must be ", dim(cova)[2]+m+2,
+                                                " ( ", dim(cova)[2]," covariate(s) and ",(length(K)*(m+2))," parameters for the Restricted Cubic Spline for each level (",length(K),") of the covariate with a time dependant effect).")
+      init1 <- init
+    }else{init1 <- c(rep(0,dim(cova)[2]+(length(K)*(m+2)))) }
     
     loglik2 <- function(par, time, event, cova, covatime, hP, w, m, mpos, K){
       beta <- par[1:dim(cova)[2]]
@@ -205,18 +219,24 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
     
     indic <- 0
     while(indic <= 5){
+      last_logllmax1 <- logllmax1
       ll_val <- logllmax1$value
       logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, 
                          event = event, cova = cova, covatime = timevarnum,
                          hP = hP, w = weights, m = m, mpos = mpos, K = K)
       delta <- ll_val - logllmax1$value
-      if(delta ==0) {indic = indic + 1}
-    }
+      if(delta_th == 0){
+        if(delta == delta_th) {indic = indic + 1}
+      }else{ 
+        if(0 < delta & delta <= delta_th) {indic = indic + 1}
+      }      }
     
-    logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, 
+    tryCatch({logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, 
                        event = event, cova = cova, covatime = timevarnum,
                        hP = hP, w = weights, m = m, mpos = mpos, K= K,
                        hessian = TRUE)
+             
+    }, error = function(e){logllmax1 <- last_logllmax1})
     })
   }
   
@@ -263,7 +283,10 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
       label <- c(label, paste0("gamma", i, "_0"), paste0("gamma", i, "_1"), get(paste0("gamma_names", i)))
     }
     
-    init1 <- rep(0,(length(K)*(m+2)))
+    if(!is.null(init)){
+      if(length(init) != (length(K)*(m+2))) stop("'init' length must be ",(length(K)*(m+2))," (",(length(K)*(m+2))," parameters for the Restricted Cubic Spline for each level (",length(K),") of the covariate with a time dependant effect).")
+      init1 <- init
+    }else{init1 <- rep(0,(length(K)*(m+2)))}
     
     loglik3 <- function(par, time, event, covatime, hP, w, m, mpos, K){
      
@@ -278,18 +301,23 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
       
       indic <- 0
       while(indic <= 5){
+        last_logllmax1 <- logllmax1
         ll_val <- logllmax1$value
         logllmax1 <- optim(par = logllmax1$par, fn = loglik3, time = time, 
                            event = event, covatime = timevarnum,
                            hP = hP, w = weights, m = m, mpos = mpos, K = K)
         delta <- ll_val - logllmax1$value
-        if(delta ==0) {indic = indic + 1}
-      }
+        if(delta_th == 0){
+          if(delta == delta_th) {indic = indic + 1}
+        }else{ 
+          if(0 < delta & delta <= delta_th) {indic = indic + 1}
+        }        }
       
-      logllmax1 <- optim(par = logllmax1$par, fn = loglik3, time = time, 
+      tryCatch({logllmax1 <- optim(par = logllmax1$par, fn = loglik3, time = time, 
                          event = event, covatime = timevarnum,
                          hP = hP, w = weights, m = m, mpos = mpos, K= K,
-                         hessian = TRUE)
+                         hessian = TRUE)}
+      , error = function(e){logllmax1 <- last_logllmax1})
     })
   }
 
@@ -309,7 +337,12 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
   
   labelNULL <- c(covnames, "gamma0",
              "gamma1", gamma_names)
-  init0 <- rep(0,m+2)
+  
+  if(is.null(covnames) & is.null(timevar)){
+    if(!is.null(init)){
+      if(length(init) != (m+2)) stop("'init' length must be ",(m+2)," (",(m+2)," parameters for the Restricted Cubic Spline).")
+    init0 <- init}
+  }else{init0 <- rep(0,m+2)}
   
   loglik0 <- function(par, time, event, hP, w, m, mpos){
     gamma <- par
@@ -326,8 +359,12 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
     logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
                        event = event, hP = hP, w = weights, m = m, mpos = mpos)
     delta <- ll_val - logllmax0$value
-    if(delta ==0) {indic = indic + 1}
-  }
+    if(delta_th == 0){
+      if(delta == delta_th) {indic = indic + 1}
+    }else{ 
+      if(0 < delta & delta <= delta_th) {indic = indic + 1}
+    }  
+    }
   
   logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
                      event = event, hP = hP, w = weights, 
@@ -376,6 +413,9 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL,
   }else{solve(logllmax0$hessian)}
   loglik <- if(!is.null(covnames) || (is.null(covnames) & !is.null(timevar)) ){c(-1*logllmax1$value, -1*logllmax0$value)
   }else{-1*logllmax0$value}
+  if(length(loglik)==2){names(loglik) <- c("Model", "Null model")}else{
+    names(loglik) <- c("Null Model")
+  }
   
   res <- list(
     formula = formula,

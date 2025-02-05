@@ -1,5 +1,5 @@
 
-survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
+survivalNET <- function(formula, data, ratetable, dist="weibull", init = NULL, delta_th = 0, weights=NULL)
 
 {
   
@@ -20,7 +20,9 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
                    year, sex")
   if(!(dist %in% c("exponential","weibull","genweibull")))  stop("Argument 
                   'dist' must be 'exponential', 'weibull', or 'genweibull' ")
-  
+  if(!is.null(init)){if(!is.numeric(init))stop("Argument 'init' must be a vector of numeric values.") }
+  if(!is.numeric(delta_th))stop("'delta_th' must be numeric.")
+  if(length(delta_th) != 1) stop("'delta_th' must be a single value.")
   ####### data management
   
   time <- data[,as.character(formula[[2]][2])] 
@@ -28,7 +30,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
   all_terms <- attr(terms(formula), "term.labels")
   strata_terms <- grep("strata\\(", all_terms, value = TRUE)
   if(length(strata_terms)>1) stop("More than one 'strata' term found in  the formula. Only one variable at a time can be stratified")
-  ratetable_terms <- grep("ratetable\\(", all_terms, value = TRUE)
+  ratetable_terms <- grep("^ratetable\\(", all_terms, value = TRUE)
   if(length(ratetable_terms) == 0) stop("Error: The formula must contain a ratetable() term.")
   if(length(ratetable_terms)>1) stop("More than one 'ratetable' term found in  the formula.")
   CV <- setdiff(all_terms, c(strata_terms, ratetable_terms))
@@ -90,7 +92,8 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
   if(max(age)<30) stop("The ages must be expressed in days (max(", as.character(formula[[2]][2]),") is less than 30 days).")
   if(!is.character(sex)) stop("'sex' must be a character string")
   if(min(names(table(sex)) %in% c("female","male", NA))==0) stop("Argument 'sex' must be 'male' or 'female'")
-  if(!is.date(year)) stop("The values for 'year' must be of the 'date' class")
+  # if(!is.date(year)) stop("The values for 'year' must be of the 'date' class")
+  if(!(is.numeric(year) || inherits(year, "Date") || inherits(year, "POSIXct") || inherits(year, "POSIXlt")))stop("'year' must be of class numeric, Date, POSIXct, or POSIXlt.")
   if(!is.null(weights)){
     if(!is.numeric(weights)) stop("Argument 'weights' must be a numeric vector")
     if(length(weights)!=dim(data)[1]) stop("Argument 'weights' must have the same length as the number of rows of the 'data' argument. (", dim(data)[1],")")}
@@ -116,7 +119,6 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
   
   if (!is.null(covnames) & is.null(timevar)){
     
-    
     logll1 <- function(sigma, nu, theta, beta, time, event, cova, hP, w){
       return(-1*sum( w*( event*log(hP+exp(cova%*%beta)*(
         (1/theta)*(1+(time/sigma)^nu)^((1/theta)-1)*(nu/sigma)*(time/sigma)^(nu-1) ) )
@@ -124,7 +126,12 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
     
     if (dist=="genweibull"){
       
-      init1 <- c(rep(0,dim(cova)[2]),rep(0,3))
+      if(!is.null(init)){
+        if(length(init) != dim(cova)[2]+3) stop("'init' length must be ", dim(cova)[2]+3,
+                                                " ( ", dim(cova)[2]," covariate(s) and 3 parameters for the Generalized Weibull distribution).")
+        init1 <- init
+      }else{init1 <- c(rep(0,dim(cova)[2]),rep(0,3))
+        }
       
       loglik1 <- function(par, time, event, cova, hP, w){
         dimC = dim(cova)[2]
@@ -136,7 +143,11 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
     
     if (dist=="weibull"){
       
-      init1 <- c(rep(0,dim(cova)[2]),rep(0,2))
+      if(!is.null(init)){
+        if(length(init) != dim(cova)[2]+2) stop("'init' length must be ", dim(cova)[2]+2,
+                                                " ( ", dim(cova)[2]," covariate(s) and 2 parameters for the Weibull distribution).")
+        init1 <- init
+      }else{init1 <- c(rep(0,dim(cova)[2]),rep(0,2))}
       
       loglik1 <- function(par, time, event, cova, hP, w){
         dimC = dim(cova)[2]
@@ -148,7 +159,11 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
     
     if (dist=="exponential"){
       
-      init1 <- c(rep(0,dim(cova)[2]),rep(0,1))
+      if(!is.null(init)){
+        if(length(init) != dim(cova)[2]+1) stop("'init' length must be ", dim(cova)[2]+1,
+                                                " ( ", dim(cova)[2]," covariate(s) and 1 parameter for the Exponential distribution).")
+        init1 <- init
+      }else{init1 <- c(rep(0,dim(cova)[2]),rep(0,1))}
       
       loglik1 <- function(par, time, event, cova, hP, w){
         dimC = dim(cova)[2]
@@ -167,7 +182,11 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
         logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, event = event,
                            cova = cova, hP = hP, w = weights)
         delta <- ll_val - logllmax1$value
-        if(delta ==0) {indic = indic + 1}
+        if(delta_th == 0){
+          if(delta == delta_th) {indic = indic + 1}
+        }else{ 
+          if(0 < delta & delta <= delta_th) {indic = indic + 1}
+        }
       }
       
       logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, event = event,
@@ -210,7 +229,13 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
       for (i in timevarnames){
         assign(paste0("param_names", i), c(paste0("log sigma_",i), paste0("log nu_",i), paste0("log theta_",i)))}
       
-      init1 <- c(rep(0,dim(cova)[2]), rep(0,3*length(K))) 
+      if(!is.null(init)){
+        if(length(init) != dim(cova)[2]+3*length(K)) stop("'init' length must be ", dim(cova)[2]+3*length(K),
+                                                " ( ", dim(cova)[2]," covariate(s) and 3 parameters for the Generalized Weibull distribution
+                                                for each level (",length(K),") of the covariate with a time dependant effect).")
+        init1 <- init
+      }else{init1 <- c(rep(0,dim(cova)[2]), rep(0,3*length(K)))
+      }
       
       loglik2 <- function(par, time, event, cova, covatime, hP, w, K){
         dimC <- dim(cova)[2]
@@ -231,7 +256,12 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
       for (i in timevarnames){
         assign( paste0("param_names", i), c(paste0("log sigma_",i), paste0("log nu_",i)))}
       
-      init1 <- c(rep(0,dim(cova)[2]), rep(0,2*length(K)))
+      if(!is.null(init)){
+        if(length(init) != dim(cova)[2]+2*length(K)) stop("'init' length must be ", dim(cova)[2]+2*length(K),
+                                                          " ( ", dim(cova)[2]," covariate(s) and 2 parameters for the Weibull distribution
+                                                for each level (",length(K),") of the covariate with a time dependant effect).")
+        init1 <- init
+      }else{init1 <- c(rep(0,dim(cova)[2]), rep(0,2*length(K)))}
       
       loglik2 <- function(par, time, event, cova, covatime, hP, w, K){
         dimC <- dim(cova)[2]
@@ -252,7 +282,12 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
       for (i in timevarnames){
         assign(paste0("param_names", i), c(paste0("log sigma_",i)))}
       
-      init1 <- c(rep(0,dim(cova)[2]),rep(0,length(K)))
+      if(!is.null(init)){
+        if(length(init) != dim(cova)[2]+length(K)) stop("'init' length must be ", dim(cova)[2]+length(K),
+                                                          " ( ", dim(cova)[2]," covariate(s) and 1 parameter for the Exponential distribution
+                                                for each level (",length(K),") of the covariate with a time dependant effect).")
+        init1 <- init
+      }else{init1 <- c(rep(0,dim(cova)[2]),rep(0,length(K)))}
       
       loglik2 <- function(par, time, event, cova, covatime, hP, w, K){
         dimC <- dim(cova)[2]
@@ -280,7 +315,11 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
                            event = event, cova = cova, covatime = timevarnum,
                            hP = hP, w = weights, K = K)
         delta <- ll_val - logllmax1$value
-        if(delta ==0) {indic = indic + 1}
+        if(delta_th == 0){
+          if(delta == delta_th) {indic = indic + 1}
+        }else{ 
+          if(0 < delta & delta <= delta_th) {indic = indic + 1}
+        }
       }
       
       logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, 
@@ -323,7 +362,13 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
       for (i in timevarnames){
         assign(paste0("param_names", i), c(paste0("log sigma_",i), paste0("log nu_",i), paste0("log theta_",i)))}
       
-      init1 <- rep(0,3*length(K))
+      if(!is.null(init)){
+        if(length(init) != 3*length(K)) stop("'init' length must be ", 3*length(K),
+                                                          " (3 parameters for the Generalized Weibull distribution
+                                                for each level (",length(K),") of the covariate with a time dependant effect).")
+        init1 <- init
+      }else{
+      init1 <- rep(0,3*length(K))}
       
       loglik3 <- function(par, time, event, covatime, hP, w, K){
         
@@ -343,7 +388,12 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
       for (i in timevarnames){
         assign( paste0("param_names", i), c(paste0("log sigma_",i), paste0("log nu_",i)))}
       
-      init1 <- rep(0,2*length(K))
+      if(!is.null(init)){
+        if(length(init) != 2*length(K)) stop("'init' length must be ", 2*length(K),
+                                             " (2 parameters for the Weibull distribution
+                                                for each level (",length(K),") of the covariate with a time dependant effect).")
+        init1 <- init
+      }else{init1 <- rep(0,2*length(K))}
       
       loglik3 <- function(par, time, event, covatime, hP, w, K){
         sigma <- exp(par[1:length(K)])
@@ -362,7 +412,12 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
       for (i in timevarnames){
         assign(paste0("param_names", i), c(paste0("log sigma_",i)))}
       
-      init1 <- rep(0,length(K))
+      if(!is.null(init)){
+        if(length(init) != length(K)) stop("'init' length must be ", length(K),
+                                             " (1 parameter for the Exponential distribution
+                                                for each level (",length(K),") of the covariate with a time dependant effect).")
+        init1 <- init
+      }else{init1 <- rep(0,length(K))}
       
       loglik3 <- function(par, time, event, covatime, hP, w, K){
         
@@ -389,7 +444,11 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
                            event = event, covatime = timevarnum,
                            hP = hP, w = weights, K = K)
         delta <- ll_val - logllmax1$value
-        if(delta ==0) {indic = indic + 1}
+        if(delta_th == 0){
+          if(delta == delta_th) {indic = indic + 1}
+        }else{ 
+          if(0 < delta & delta <= delta_th) {indic = indic + 1}
+        }
       }
       
       logllmax1 <- optim(par = logllmax1$par, fn = loglik3, time = time, 
@@ -409,7 +468,12 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
     if(is.null(label)){
       label <- c(covnames,"log sigma", "log nu", "log theta")}
     
-    init0 <- rep(0,3)
+    if(is.null(covnames) & is.null(timevar)){
+      if(!is.null(init)){
+        if(length(init) != 3) stop("'init' length must be 3 (3 parameters for the Generalized Weibull distribution).")
+      init0 <- init}
+    }else{
+    init0 <- rep(0,3)}
     
     loglik0 <- function(par, time, event, cova, hP, w){
       sigma <- exp(par[1]); nu <- exp(par[2]);  theta <- exp(par[3]) 
@@ -424,7 +488,13 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
     if(is.null(label)){
       label <- c(covnames,"log sigma", "log nu")}
     
-    init0 <- rep(0,2)
+    if(is.null(covnames) & is.null(timevar)){
+      if(!is.null(init)){
+        if(length(init) != 2) stop("'init' length must be 2 (2 parameters for the Weibull distribution).")
+        init0 <- init
+      }
+    }else{
+      init0 <- rep(0,2)}
     
     loglik0 <- function(par, time, event, cova, hP, w){
       sigma <- exp(par[1]); nu <- exp(par[2]);  theta <- 1
@@ -439,7 +509,13 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
     if(is.null(label)){
       label <- c(covnames,"log sigma")}
     
-    init0 <- rep(0,1)
+    if(is.null(covnames) & is.null(timevar)){
+      if(!is.null(init)){
+        if(length(init) != 1) stop("'init' length must be 1 (1 parameter for the Exponential distribution).")
+        init0 <- init
+      }
+    }else{
+      init0 <- rep(0,1)} 
     
     loglik0 <- function(par, time, event, cova, hP, w){
       sigma <- exp(par[1]); nu <- 1;  theta <- 1
@@ -462,8 +538,11 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
                          event = event, hP = hP, w = weights, method = method, 
                          lower = lower, upper = upper)
       delta <- ll_val - logllmax0$value
-      if(delta ==0) {indic = indic + 1}
-    }
+      if(delta_th == 0){
+        if(delta == delta_th) {indic = indic + 1}
+      }else{ 
+        if(0 < delta & delta <= delta_th) {indic = indic + 1}
+      }    }
     
     logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
                        event = event, cova = cova, hP = hP, w = weights,
@@ -481,7 +560,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
                           row.names = label)
   }
   
-  if(is.null(covnames) & is.null(timevar)){
+  if(is.null(covnames) & is.null(timevar) & dist != "exponential") {
     
     t.table <- data.frame(coef = logllmax0$par,
                           ecoef = exp(logllmax0$par),
@@ -490,6 +569,21 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
                           p = 2*(1-pnorm(abs(logllmax0$par/sqrt(diag(solve(logllmax0$hessian)))), 0, 1)),
                           row.names = label)
   }
+  
+  if(is.null(covnames) & is.null(timevar) & dist == "exponential"){
+  
+    se_fun <- function(par, time, event, hP, w){
+      sqrt( -1*sum(w*(event/par^3)*(-2*(time-1/(hP+1/par)) + (1/par)*(1/(hP + 1/par)) ) )  )
+    }
+      
+    t.table <- data.frame(coef = logllmax0$par,
+                          ecoef = exp(logllmax0$par),
+                          se = se_fun(par = logllmax0$par, time =time, event= event, hP= hP, w = weights),
+                          z = logllmax0$par/se_fun(par = logllmax0$par, time =time, event= event, hP= hP, w = weights),
+                          p = 2*(1-pnorm(abs(logllmax0$par/se_fun(par = logllmax0$par, time =time, event= event, hP= hP, w = weights) ), 0, 1)),
+                          row.names = label)
+  }
+  
   
   if(is.null(covnames) & !is.null(timevar)){
     
@@ -512,9 +606,12 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", weights=NULL)
   dimnames(cova)[[2]] <- covnames
   
   var <- if(!is.null(covnames) || (is.null(covnames) & !is.null(timevar)) ){solve(logllmax1$hessian)
-  }else{solve(logllmax0$hessian)}
+  }else{if(dist !="exponential"){solve(logllmax0$hessian)}else{se_fun(par = logllmax0$par, time =time, event= event, hP= hP, w = weights)^2}  }
   loglik <- if (!is.null(covnames) || (is.null(covnames) & !is.null(timevar)) ){c(-1*logllmax1$value, -1*logllmax0$value)
   }else{-1*logllmax0$value}
+  if(length(loglik)==2){names(loglik) <- c("Model", "Null model")}else{
+    names(loglik) <- c("Null Model")
+  }
   
   res <- list(
     formula = formula,
