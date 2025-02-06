@@ -67,12 +67,12 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
     results <- c()
     delta <- c()
 
-    end_date <- as.Date(year + time)
+    end_date <- as.Date(year + time, origin = "1960-01-01")
       
     result <- process_dates(bday, next_y, end_date)
 
     results <- result
-    results <- c(as.Date(year),as.Date(sort(c(results$birthdays,
+    results <- c(as.Date(year,origin = "1960-01-01"),as.Date(sort(c(results$birthdays,
                  results$new_years, end_date+ as.numeric(difftime("1970-01-01",
                  "1960-01-01")) )), origin = "1960-01-01"))
    
