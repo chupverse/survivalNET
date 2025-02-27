@@ -1,17 +1,23 @@
 
-predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=NULL,
+predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
                                 ratetable = NULL, method = NULL, ...){
     
-  if(!(type %in% c("relative","lp","overall")))  stop("Argument 
+  if(!(type %in% c("net","lp","overall")))  stop("Argument 
                   'type' must be 'relative', 'lp' or 'overall' ")
   if(type == "overall" && "m" %in% names(object))stop("The 'overall' survival prediction
   for survivalFLEXNET is still under development. Please
                             use 'type = 'relative' or 'lp'. ")
   
-  if(is.null(newtimes))  { newtimes <- 1:max(object$y[,1]) }
-  
-  if(!is.null(newtimes))  {newtimesSave <- newtimes
-                           newtimes <- sort(c((1:max(object$y[,1])),unique(newtimes)))}
+  if(is.null(newtimes))  { 
+    newtimes <- 1:max(object$y[,1])
+                           
+    newtimesSave <- NULL
+    
+  }else{
+    
+    newtimesSave <- newtimes
+        
+    newtimes <- sort(c((1:max(object$y[,1])),unique(newtimes)))}
   
   if(0 %in% newtimes){
       newtimes <- sort(newtimes[-(newtimes == 0)])
@@ -116,7 +122,6 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
     
     }
     
-    
   ### regression coefficients
     
   if ("dist" %in% names(object)) {
@@ -183,7 +188,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
   
   ### type 
     
-  if(type=="relative") {
+  if(type=="net") {
     
     ## survivalNET
       if ("dist" %in% names(object)) {
@@ -193,12 +198,12 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
           
             ##avec covariables
               if(dim(object$x)[2] != 0){
-              net_rel_cov <- function(x) { exp( exp(as.matrix(covariates)%*%beta)*(1-(1+(x/sigma)^nu)^(1/theta)) ) }
+              net_cov <- function(x) { exp( exp(as.matrix(covariates)%*%beta)*(1-(1+(x/sigma)^nu)^(1/theta)) ) }
               }
               
             ##pas de covariables
               if(dim(object$x)[2] == 0){
-                net_rel_nocov <- function(x) { exp(1-(1+(x/sigma)^nu)^(1/theta) ) }
+                net_nocov <- function(x) { exp(1-(1+(x/sigma)^nu)^(1/theta) ) }
               }
           
           }
@@ -209,7 +214,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
             ##avec covariables
               if(dim(object$x)[2] != 0){
                 
-                net_rel_strata_cov <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
+                net_strata_cov <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
                   n <- dim(covariates)[1]
                   timpos <- dim(covariates)[2]
                   rend <- data.frame()
@@ -231,7 +236,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
             ##pas de covariables 
               if(dim(object$x)[2] == 0){
                 
-                net_rel_strata_nocov <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
+                net_strata_nocov <- function(x, covariates, sigmas, nus, thetas, timecov, K) {
                   n <- dim(covariates)[1]
                   timpos <- dim(covariates)[2]
                   rend <- data.frame()
@@ -260,13 +265,13 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
             splnvalues <- splinecube(newtimes, gamma, m, mpos)$spln
             ##avec covariables
               if(dim(object$x)[2] != 0){
-                flex_rel_cov <- function(x){ exp( -1*exp(as.matrix(covariates)%*%beta)*exp(x) )}
+                flex_net_cov <- function(x){ exp( -1*exp(as.matrix(covariates)%*%beta)*exp(x) )}
               }
             
             ##pas de covariables
               if(dim(object$x)[2] == 0){
                 
-                flex_rel_nocov <- function(x){ exp( -1*exp(x) ) }
+                flex_net_nocov <- function(x){ exp( -1*exp(x) ) }
               }
           
           }
@@ -279,7 +284,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
                 
                 gammas <- matrix(object$coefficients[-(1:dim(object$x)[2])], ncol = length(object$xlevels[[1]]))
                 
-                flex_rel_strata_cov <- function(x, covariates, gammas, timecov, K=NULL) {
+                flex_net_strata_cov <- function(x, covariates, gammas, timecov, K=NULL) {
                   n <- dim(covariates)[1]
                   timpos <- dim(covariates)[2]
                   rend <- data.frame()
@@ -300,7 +305,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
                 
                 gammas <- matrix(object$coefficients, ncol = length(object$xlevels[[1]]))
                 
-                flex_rel_strata_nocov <- function(x, covariates, gammas, timecov, K=NULL) {
+                flex_net_strata_nocov <- function(x, covariates, gammas, timecov, K=NULL) {
                   n <- dim(covariates)[1]
                   timpos <- dim(covariates)[2]
                   rend <- data.frame()
@@ -504,7 +509,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
   
   ###predictions 
   
-  if (type == "relative"){
+  if (type == "net"){
   
     ## survivalNET
       if ("dist" %in% names(object)) {
@@ -515,12 +520,12 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
             ##avec covariables
               if(dim(object$x)[2] != 0){
                 
-                   predictions <- sapply(newtimes, FUN = "net_rel_cov")}
+                   predictions <- sapply(newtimes, FUN = "net_cov")}
             
             ##sans covariables
               if(dim(object$x)[2] == 0){
               
-                 predictions <- data.frame(matrix(rep(net_rel_nocov(newtimes), each = n), nrow = n, byrow = FALSE))}
+                 predictions <- data.frame(matrix(rep(net_nocov(newtimes), each = n), nrow = n, byrow = FALSE))}
           }
        
         ##avec strate
@@ -537,7 +542,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
              ##avec covariables
                if(dim(object$x)[2] != 0){
                
-                 predictions <- net_rel_strata_cov(x = newtimes, covariates = covariates,
+                 predictions <- net_strata_cov(x = newtimes, covariates = covariates,
                                   sigmas = sigmas, nus = nus, thetas = thetas,
                                   timecov = timecov, K = K)
                }
@@ -545,7 +550,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
              ##sans covariables
                if(dim(object$x)[2] == 0){
                  
-                 predictions <- net_rel_strata_nocov(x = newtimes, covariates = covariates,
+                 predictions <- net_strata_nocov(x = newtimes, covariates = covariates,
                                      sigmas = sigmas, nus = nus, thetas = thetas,
                                      timecov = timecov, K = K)
                  }
@@ -562,12 +567,12 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
              ##avec covariables
                 if(dim(object$x)[2] != 0){
                     
-                  predictions <- sapply(splnvalues, FUN = "flex_rel_cov")}
+                  predictions <- sapply(splnvalues, FUN = "flex_net_cov")}
              
              ##sans covariables 
                 if(dim(object$x)[2] == 0){
                     
-                    predictions <- data.frame(matrix(rep(sapply(splnvalues, FUN = "flex_rel_nocov")
+                    predictions <- data.frame(matrix(rep(sapply(splnvalues, FUN = "flex_net_nocov")
                                               , each = n), nrow = n, byrow = FALSE))}
              }
         
@@ -585,7 +590,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
               ##avec covariables
                 if(dim(object$x)[2] != 0){
                     
-                    predictions <- flex_rel_strata_cov(newtimes, covariates = 
+                    predictions <- flex_net_strata_cov(newtimes, covariates = 
                                        covariates, gammas = gammas, timecov = 
                                        timecov, K= K)
                     }
@@ -593,7 +598,7 @@ predict.survivalNET <- function(object, type="relative", newdata=NULL, newtimes=
               ##sans covariables
                 if(dim(object$x)[2] == 0){
                     
-                    predictions <- flex_rel_strata_nocov(newtimes, covariates = 
+                    predictions <- flex_net_strata_nocov(newtimes, covariates = 
                                         covariates, gammas = gammas, timecov = 
                                         timecov, K= K)}
           }

@@ -56,6 +56,7 @@ parameters.
 }
 
 \value{
+an object of class "\code{survivalNET}".
 \item{formula}{The \code{formula} object.}
 \item{dist}{The distribution of the baseline hazard function of the excess hazard.}
 \item{coefficients}{A vector with the regression coefficients of the excess hazard.}
@@ -72,11 +73,14 @@ because of missing data.}
 \item{x}{A matrix with the observed covariates.}
 \item{ays}{A data frame with age, birthyear of individuals and gender.}
 \item{call}{Return the call with the specified arguments of the functon.}
+\item{correstab}{Correspondance table of the stratified term values.}
+\item{xlevels}{The different levels of the stratified term.}
+\item{levelsval}{The stratified term individual values.}
+
 }
 
 \references{
-Dickman PW, Sloggett A, Hills M, and Hakulinen T (2004). Regression models for relative survival. 
-Stat Med. 23 (1):51-64. doi:10.1002/sim.1597.
+Royston P, Parmar MK. Flexible parametric proportional-hazards and proportional-odds models for censored survival data, with application to prognostic modelling and estimation of treatment effects. Stat Med. 2002 Aug 15;21(15):2175-97. doi: 10.1002/sim.1203. PMID: 12210632.
 }
 
 \examples{
@@ -91,15 +95,15 @@ PPest <- rs.surv(Surv(time, event) ~ stade + delay, data = dataK,
 
 plot(PPest) 
 
-# The parametric estimation of the net survival curves (Weibull distribution)
+# The flexible parametric estimation of the net survival curves 
 
-sNET <- survivalNET(Surv(time, event) ~ stade + delay + ratetable(age = age, year = year, 
+sFLEX <- survivalFLEXNET(Surv(time, event) ~ stade + delay + ratetable(age = age, year = year, 
                     sex = sexchara), data = dataK, ratetable=fr.ratetable,
-                    dist="weibull", init = NULL, delta_th = 0, weights = 0)
+                    m = 2, init = NULL, delta_th = 0, weights = NULL)
 
-sNET.pred <- predict(sNET, newdata=data.frame( stade=c(0,0,1,1), delay=c(0,1,0,1) ) )
+sFLEX.pred <- predict(sFLEX, newdata=data.frame( stade=c(0,0,1,1), delay=c(0,1,0,1) ) )
 
-for (i in 1:4) {lines(sNET.pred$times, sNET.pred$predictions[i,], col=2)}
+for (i in 1:4) {lines(sFLEX.pred$times, sFLEX.pred$predictions[i,], col=2)}
 }
 
 \keyword{Regressing}

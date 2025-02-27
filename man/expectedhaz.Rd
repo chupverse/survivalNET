@@ -29,7 +29,9 @@ attributes(fr.ratetable)$dimnames$year
 
 # the expected instantaneous hazard of death at 1-year post-inclusion
 # for a French 50 years-old man included in a study the 02.03.2005
+#14000 days since 1960-01-01 is May 1st, 1998
 
-date.ddmmmyy(14000)
+as.Date(14000, origin = "1960-01-01")
+
 expectedhaz(fr.ratetable, age=50*365, sex="male", year=2010, time=14000)
 }

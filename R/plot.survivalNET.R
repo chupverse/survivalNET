@@ -29,11 +29,11 @@ plot.survivalNET <- function(x, n.groups=5, pro.time=NULL, newdata=NULL,
     }
   if ("dist" %in% names(x)) {
   .pred <- predict(x, newdata=cova, newtimes=pro.time, type="relative")$predictions
-  .pred <- .pred[,-1]
+  .pred <- .pred ## changé de .pred[,-1] 
   }
   if ("m" %in% names(x)) {
-    .pred <- predict(x, newdata=cova,, newtimes= c(1:(pro.time)), type="relative")$predictions
-    .pred <- .pred[,round(pro.time)]
+    .pred <- predict(x, newdata=cova,, newtimes= c(1:(pro.time),pro.time), type="relative")$predictions
+    .pred <- .pred[,floor(pro.time)+1]
   }
   .grps <- as.numeric(cut(.pred,
                 breaks = c(-Inf, quantile(.pred, seq(1/n.groups, 1, 1/n.groups))),

@@ -26,7 +26,9 @@ data(fr.ratetable)
 
 # the expected cumulative hazard of death at 1-year post-inclusion
 # for a French 50 years-old man included in a study in 2010
+#14000 days since 1960-01-01 is May 1st, 1998
 
-date.ddmmmyy(14000)
+as.Date(14000, origin = "1960-01-01")
+
 expectedcumhaz(fr.ratetable, age=50, sex="male", year=14000, time=365)
 }

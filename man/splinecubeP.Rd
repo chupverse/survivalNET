@@ -41,7 +41,7 @@ and \deqn{\phi_j = \frac{k_{max}-k_j}{k_{max}-k_{min}}}
 \item{spln}{The derivated spline values at the input times.}
 \item{knots}{The position of the knots (including the first and last knot). Note that those are log(times), as the log-transformation is needed to compute the spline.}
 \item{phi}{The \eqn{\phi_j} coefficients calculated with the knots positions.}
-\item{nu}{The values of \eqn{\nu'_j} for each log(times).}
+\item{nu_prime}{The values of \eqn{\nu'_j} for each log(times).}
 }
 
 \examples{

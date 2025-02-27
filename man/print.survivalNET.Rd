@@ -2,7 +2,7 @@
 \alias{print.survivalNET}
 
 \title{
-S3 Method for Printing an 'survivalNET' Object
+S3 Method for Printing a 'survivalNET' object
 }
 \description{
 Print the main parameters of the estimated model.

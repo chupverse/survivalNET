@@ -5,7 +5,7 @@
 Cross-validation method for a Flexible Relative Survival Model with Additive Hazards
 }
 \description{
-Cross-validation method for the hyper-parameters for an object of class \code{survivalFLEXNET}.
+Cross-validation method for the hyper-parameters of an object of class \code{survivalFLEXNET}.
 }
 
 \usage{
@@ -36,6 +36,8 @@ If another value is chosen, the difference must be less than equal than this val
 individuals. By default, the weights equal 1.}
 }
 
+\details{The hyper-parameters are "m" and "mpos". It is only possible to do cross-valiation on one at the time. The user must input either multiple 'm' with 'mpos = NULL' or only one 'm' and multiple differents knots positions."}
+
 \value{
 \item{optimal}{A list giving the optimal value for each parameter.}
 \item{results}{A data frame listing the parameters combinaison and their metrics values.}
@@ -55,7 +57,7 @@ tune.FLEX$results
 }
 
 \seealso{
-\code{\link{plot.default}}, \code{\link{survivalNET}}.
+\code{\link{survivalFLEXNET}}.
 }
 
-\keyword{Plotting}
+\keyword{Cross-validation}
