@@ -341,8 +341,11 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
   if(is.null(covnames) & is.null(timevar)){
     if(!is.null(init)){
       if(length(init) != (m+2)) stop("'init' length must be ",(m+2)," (",(m+2)," parameters for the Restricted Cubic Spline).")
-    init0 <- init}else{init0 <- rep(0,m+2)}
-  }
+    init0 <- init}else{init0 <- rep(0,m+2)
+    }}else{
+      init0 <- rep(0,m+2)
+    }
+  
   
   loglik0 <- function(par, time, event, hP, w, m, mpos){
     gamma <- par

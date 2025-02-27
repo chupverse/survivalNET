@@ -472,7 +472,10 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", init = NULL, d
       if(!is.null(init)){
         if(length(init) != 3) stop("'init' length must be 3 (3 parameters for the Generalized Weibull distribution).")
       init0 <- init}else{
-    init0 <- rep(0,3)}}
+        init0 <- rep(0,3)
+      }
+      }else{
+    init0 <- rep(0,3)}
     
     loglik0 <- function(par, time, event, cova, hP, w){
       sigma <- exp(par[1]); nu <- exp(par[2]);  theta <- exp(par[3]) 
@@ -491,7 +494,9 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", init = NULL, d
       if(!is.null(init)){
         if(length(init) != 2) stop("'init' length must be 2 (2 parameters for the Weibull distribution).")
         init0 <- init}else{
-      init0 <- rep(0,2)} }
+          init0 <- rep(0,2)}
+        }else{
+      init0 <- rep(0,2)} 
     
     loglik0 <- function(par, time, event, cova, hP, w){
       sigma <- exp(par[1]); nu <- exp(par[2]);  theta <- 1
@@ -511,7 +516,9 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", init = NULL, d
         if(length(init) != 1) stop("'init' length must be 1 (1 parameter for the Exponential distribution).")
         init0 <- init
     }else{
-      init0 <- rep(0,1)} }
+      init0 <- rep(0,1)}
+    }else{
+      init0 <- rep(0,1)} 
     
     loglik0 <- function(par, time, event, cova, hP, w){
       sigma <- exp(par[1]); nu <- 1;  theta <- 1
