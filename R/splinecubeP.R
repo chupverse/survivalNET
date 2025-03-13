@@ -21,8 +21,7 @@ splinecubeP <- function(time, gamma, m, mpos = NULL, ortho = TRUE)
     for(i in (0:(m+1))){
       a <- c(a,i/(m+1))}
     mpos <- quantile(x, probs = a)
-    mpos <- as.numeric(mpos)}
-  else{
+    mpos <- as.numeric(mpos)}else{
     a <- c(0,mpos,1)
     mpos <- quantile(x, probs = a)
   }
@@ -43,7 +42,7 @@ splinecubeP <- function(time, gamma, m, mpos = NULL, ortho = TRUE)
       nu_prime <- cbind(nu_prime,3*pmax(0,(x-mpos[i]))^2-3*phi[i-1]*pmax(0,(x-mpos[1]))^2-3*(1-phi[i-1])*pmax(0,(x-mpos[m+2]))^2)
     }
     if(ortho == TRUE){
-      nu_prime <- qr.Q(qr(cbind(x, nu_prime)))[, -1]
+      nu_prime <- as.matrix(qr.Q(qr(cbind(x, nu_prime)))[, -1])
     }
     for(i in 2:(length(gamma)-1)){
     spln <- spln + gamma[i+1]*nu_prime[,i-1] }
