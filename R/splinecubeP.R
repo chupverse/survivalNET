@@ -1,5 +1,5 @@
 
-splinecubeP <- function(time, gamma, m, mpos = NULL, ortho = TRUE)
+splinecubeP <- function(time, gamma, m, mpos = NULL, ortho = FALSE)
   
 {
   
