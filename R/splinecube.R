@@ -53,7 +53,7 @@ splinecube <- function(time, gamma, m, mpos = NULL, ortho = TRUE)
         spln = spln,
         knots = mpos,
         phi = phi,
-        nu = nu
+        nu = nu)
   }
   return(res)
 }
