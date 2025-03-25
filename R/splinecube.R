@@ -1,5 +1,5 @@
 
-splinecube <- function(time, gamma, m, mpos = NULL, ortho = FALSE)
+splinecube <- function(time, gamma, m, mpos = NULL)
   
 {
   
@@ -41,9 +41,6 @@ splinecube <- function(time, gamma, m, mpos = NULL, ortho = FALSE)
       for(i in 2:(length(gamma)-1)){
         phi <- c(phi, (mpos[m+2]-mpos[i])/(mpos[m+2]-mpos[1]))
         nu <- cbind(nu,pmax(0,(x-mpos[i]))^3-phi[i-1]*pmax(0,(x-mpos[1]))^3-(1-phi[i-1])*pmax(0,(x-mpos[m+2]))^3)
-      }
-      if(ortho == TRUE){
-        nu <- as.matrix(qr.Q(qr(cbind(x, nu)))[, -1])
       }
       for(i in 2:(length(gamma)-1)){
       spln <- spln + gamma[i+1]*nu[,i-1] }
