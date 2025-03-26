@@ -184,7 +184,6 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
        gamma <- unname( object$coefficients[(dim(object$x)[2]+1):(dim(object$t.table)[1])] ) 
        m <- object$m
        mpos <- object$mpos
-       mquant <- object$mquant 
   }
   
   ### type 
@@ -263,7 +262,7 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
           if (!("xlevels" %in% names(object))) {
           
             #valeurs de la spline
-            splnvalues <- splinecube(newtimes, gamma, m, mpos, mquant)$spln
+            splnvalues <- splinecube(newtimes, gamma, m, mpos )$spln
             ##avec covariables
               if(dim(object$x)[2] != 0){
                 flex_net_cov <- function(x){ exp( -1*exp(as.matrix(covariates)%*%beta)*exp(x) )}
@@ -293,7 +292,7 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
                     timeval <- covariates[i,timpos]
                     gammai <- gammas[,timeval]
                     covariatesi <- covariates[i,-timpos]
-                    splnvalues <- splinecube(x, gammai, m, mpos, mquant)$spln
+                    splnvalues <- splinecube(x, gammai, m, mpos )$spln
                     sur <-exp(-1*exp(as.vector(as.numeric(covariatesi)%*%beta))*exp( splnvalues ))
                     rend <- rbind(rend, sur)
                   }
@@ -313,7 +312,7 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
                   for (i in 1:n){
                     timeval <- covariates[i,timpos]
                     gammai <- gammas[,timeval]
-                    splnvalues <- splinecube(x, gammai, m, mpos, mquant)$spln
+                    splnvalues <- splinecube(x, gammai, m, mpos )$spln
                     sur <-exp(-1*exp( splnvalues ))
                     rend <- rbind(rend, sur)
                   }
@@ -426,7 +425,7 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
       if("m" %in% names(object)){
   
         #valeurs de la spline
-        splnvalues <- splinecube(newtimes, gamma, m, mpos, mquant)$spln
+        splnvalues <- splinecube(newtimes, gamma, m, mpos )$spln
        
         ## pas de strate    
           if (!("xlevels" %in% names(object))){
