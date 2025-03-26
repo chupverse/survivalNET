@@ -1,5 +1,7 @@
 
+
 splinecube <- function(time, gamma, m, mpos = NULL, mquant = NULL)
+
   
 {
   
