@@ -111,7 +111,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     logll1 <- function(beta, gamma, time, event, cova, hP, w, m, mpos, mquant){
       return(-1*sum( w*(
         event * log(hP + (1/time)*splinecubeP(time, gamma, m, mpos, mquant)$spln *
-                      exp(splinecube(time, gamma, m, mquant)$spln + cova %*% beta) ) -
+                      exp(splinecube(time, gamma, m, mpos, mquant)$spln + cova %*% beta) ) -
           exp(splinecube(time, gamma, m, mpos, mquant)$spln + cova %*% beta)
       ) ) ) } ###p5489 StatinMed P.Nelson PC. Lambert Flexible Parametric models for relative survival
     

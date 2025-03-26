@@ -30,6 +30,8 @@ splinecubeP <- function(time, gamma, m, mpos = NULL, mquant = NULL)
       a <- c(mquant)
       mpos <- quantile(x, probs = a)
     }
+  }else{
+    a <- NULL
   }
   
   if(m==0){
@@ -38,8 +40,7 @@ splinecubeP <- function(time, gamma, m, mpos = NULL, mquant = NULL)
      res <- list(
       spln = spln,
       mpos = mpos)
-  }
-  else{
+  }else{
     phi <- c()
     nu_prime <- c()
     spln <- 0

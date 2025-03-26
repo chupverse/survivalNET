@@ -30,6 +30,8 @@ splinecube <- function(time, gamma, m, mpos = NULL, mquant = NULL)
             a <- c(mquant)
             mpos <- quantile(x, probs = a)
     }
+  }else{
+    a <- NULL
   }
 
   if(m==0){
@@ -53,7 +55,7 @@ splinecube <- function(time, gamma, m, mpos = NULL, mquant = NULL)
       res = list(
         spln = spln,
         knots = mpos,
-        quantiles = a,
+        quantiles = a, 
         phi = phi,
         nu = nu)
   }
