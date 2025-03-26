@@ -1,5 +1,5 @@
 
-survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = NULL, 
+survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant = NULL, init = NULL, 
                             delta_th = 0, weights=NULL)
 {
   
@@ -15,6 +15,8 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
   if(!is.null(init)){if(!is.numeric(init))stop("Argument 'init' must be a vector of numeric values.") }
   if(!is.numeric(delta_th))stop("'delta_th' must be numeric.")
   if(length(delta_th) != 1) stop("'delta_th' must be a single value.") 
+  if(!is.null(mpos) & !is.null(mquant))warning("'mpos' and 'mquant' have both been specified. 'mpos' values have been chosen over 'mquant' quantiles.") #ligne : mquant = NULL
+  
   ####### data management
   
   time <- data[,as.character(formula[[2]][2])] 
@@ -84,7 +86,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
   if(!is.null(weights)){
     if(!is.numeric(weights)) stop("Argument 'weights' must be a numeric vector")
     if(length(weights)!=dim(data)[1]) stop("Argument 'weights' must have the same length as the number of rows of the 'data' argument. (", dim(data)[1],")")}
-  
+  if(!is.null(mpos) & !is.null(mquant)){mquant = NULL}
   d <- cbind(time, event, cova, age, 1*(sex=="male"), year)
   na <- !is.na(apply(d, MARGIN=1, FUN = "sum"))
   
@@ -106,11 +108,11 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
   
   if (!is.null(covnames) & is.null(timevar)){
     
-    logll1 <- function(beta, gamma, time, event, cova, hP, w, m, mpos){
+    logll1 <- function(beta, gamma, time, event, cova, hP, w, m, mpos, mquant){
       return(-1*sum( w*(
-        event * log(hP + (1/time)*splinecubeP(time, gamma, m, mpos)$spln *
-                      exp(splinecube(time, gamma, m)$spln + cova %*% beta) ) -
-          exp(splinecube(time, gamma, m)$spln + cova %*% beta)
+        event * log(hP + (1/time)*splinecubeP(time, gamma, m, mpos, mquant)$spln *
+                      exp(splinecube(time, gamma, m, mquant)$spln + cova %*% beta) ) -
+          exp(splinecube(time, gamma, m, mpos, mquant)$spln + cova %*% beta)
       ) ) ) } ###p5489 StatinMed P.Nelson PC. Lambert Flexible Parametric models for relative survival
     
     
@@ -126,21 +128,21 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
       init1 <- init
     }else{init1 <- c(rep(0,dim(cova)[2]+m+2))}
     
-    loglik1 <- function(par, time, event, cova, hP, w, m, mpos){
+    loglik1 <- function(par, time, event, cova, hP, w, m, mpos, mquant){
       beta <- par[1:dim(cova)[2]]
       gamma <- par[(dim(cova)[2]+1):length(par)]
-      return(logll1(beta, gamma, time, event, cova, hP, w, m, mpos)) }
+      return(logll1(beta, gamma, time, event, cova, hP, w, m, mpos, mquant)) }
     
     suppressWarnings({
     logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
-                       cova = cova, hP = hP, w = weights, m = m, mpos = mpos)
+                       cova = cova, hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant)
     
     indic <- 0
     while(indic <= 5){
       ll_val <- logllmax1$value
       logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
                          event = event, cova = cova, hP = hP, w = weights,
-                         m = m, mpos = mpos)
+                         m = m, mpos = mpos, mquant = mquant)
       delta <- ll_val - logllmax1$value
       if(delta_th == 0){
         if(delta == delta_th) {indic = indic + 1}
@@ -150,7 +152,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
     
     logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
                        event = event, cova = cova, hP = hP, w = weights,
-                       m = m, mpos = mpos,
+                       m = m, mpos = mpos, mquant = mquant,
                        hessian = TRUE)
     })
   
@@ -165,7 +167,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
     
     K = sort(unique(timevarnum))
     
-    logll2 <- function(beta, gamma, time, event, cova, covatime, hP, w, m, mpos, K){
+    logll2 <- function(beta, gamma, time, event, cova, covatime, hP, w, m, mpos, mquant, K){
       
       value = 0
       for(k in K){
@@ -175,9 +177,9 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
         hPk <- hP[covatime == k]
         covak <- cova[covatime == k]
         wk <- w[covatime == k]
-        value_strate <- -1*sum(wk * (eventk * log(hPk + (1/timek)*splinecubeP(timek, gammak, m, mpos)$spln*
-                                     exp(splinecube(timek, gammak, m)$spln + as.matrix(covak) %*% beta) ) -
-          exp(splinecube(timek, gammak, m)$spln + as.matrix(covak) %*% beta)
+        value_strate <- -1*sum(wk * (eventk * log(hPk + (1/timek)*splinecubeP(timek, gammak, m, mpos, mquant)$spln*
+                                     exp(splinecube(timek, gammak, m, mpos, mquant)$spln + as.matrix(covak) %*% beta) ) -
+          exp(splinecube(timek, gammak, m, mpos, mquant)$spln + as.matrix(covak) %*% beta)
         )
         )
         value <- value +value_strate
@@ -206,16 +208,16 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
       init1 <- init
     }else{init1 <- c(rep(0,dim(cova)[2]+(length(K)*(m+2)))) }
     
-    loglik2 <- function(par, time, event, cova, covatime, hP, w, m, mpos, K){
+    loglik2 <- function(par, time, event, cova, covatime, hP, w, m, mpos, mquant, K){
       beta <- par[1:dim(cova)[2]]
       gamma <-matrix(par[(dim(cova)[2]+1):(dim(cova)[2]+(length(K)*(m+2)))], ncol = length(K))
       
-      return(logll2(beta, gamma, time, event, cova, covatime, hP, w, m, mpos, K)) }
+      return(logll2(beta, gamma, time, event, cova, covatime, hP, w, m, mpos, mquant, K)) }
     
     suppressWarnings({
     logllmax1 <- optim(par = init1, fn = loglik2, time = time, event = event,
                        cova = cova, covatime = timevarnum, hP = hP, w = weights
-                       , m = m, mpos = mpos, K= K)
+                       , m = m, mpos = mpos, mquant = mquant, K= K)
     
     indic <- 0
     while(indic <= 5){
@@ -223,7 +225,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
       ll_val <- logllmax1$value
       logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, 
                          event = event, cova = cova, covatime = timevarnum,
-                         hP = hP, w = weights, m = m, mpos = mpos, K = K)
+                         hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant, K = K)
       delta <- ll_val - logllmax1$value
       if(delta_th == 0){
         if(delta == delta_th) {indic = indic + 1}
@@ -233,7 +235,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
     
     tryCatch({logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, 
                        event = event, cova = cova, covatime = timevarnum,
-                       hP = hP, w = weights, m = m, mpos = mpos, K= K,
+                       hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant, K= K,
                        hessian = TRUE)
              
     }, error = function(e){logllmax1 <- last_logllmax1})
@@ -249,7 +251,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
     
     K = sort(unique(timevarnum))
     
-    logll3 <- function(gamma, time, event, covatime, hP, w, m, mpos, K){
+    logll3 <- function(gamma, time, event, covatime, hP, w, m, mpos, mquant, K){
       
       value = 0
       for(k in K){
@@ -258,9 +260,9 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
         eventk <- event[covatime == k]
         hPk <- hP[covatime == k]
         wk <- w[covatime == k]
-        value_strate <- -1*sum(wk * (eventk * log(hPk + (1/timek)*splinecubeP(timek, gammak, m, mpos)$spln*
-                                                    exp(splinecube(timek, gammak, m)$spln ) ) -
-                                       exp(splinecube(timek, gammak, m)$spln)
+        value_strate <- -1*sum(wk * (eventk * log(hPk + (1/timek)*splinecubeP(timek, gammak, m, mpos, mquant)$spln*
+                                                    exp(splinecube(timek, gammak, m, mpos, mquant)$spln ) ) -
+                                       exp(splinecube(timek, gammak, m, mpos, mquant)$spln)
         )
         )
         value <- value +value_strate
@@ -288,16 +290,16 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
       init1 <- init
     }else{init1 <- rep(0,(length(K)*(m+2)))}
     
-    loglik3 <- function(par, time, event, covatime, hP, w, m, mpos, K){
+    loglik3 <- function(par, time, event, covatime, hP, w, m, mpos, mquant, K){
      
        gamma <-matrix(par[1:((length(K)*(m+2)))], ncol = length(K))
       
-      return(logll3(gamma, time, event, covatime, hP, w, m, mpos, K)) }
+      return(logll3(gamma, time, event, covatime, hP, w, m, mpos, mquant, K)) }
     
     suppressWarnings({
       logllmax1 <- optim(par = init1, fn = loglik3, time = time, event = event,
                           covatime = timevarnum, hP = hP, w = weights
-                         , m = m, mpos = mpos, K= K)
+                         , m = m, mpos = mpos, mquant = mquant, K= K)
       
       indic <- 0
       while(indic <= 5){
@@ -305,7 +307,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
         ll_val <- logllmax1$value
         logllmax1 <- optim(par = logllmax1$par, fn = loglik3, time = time, 
                            event = event, covatime = timevarnum,
-                           hP = hP, w = weights, m = m, mpos = mpos, K = K)
+                           hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant, K = K)
         delta <- ll_val - logllmax1$value
         if(delta_th == 0){
           if(delta == delta_th) {indic = indic + 1}
@@ -315,7 +317,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
       
       tryCatch({logllmax1 <- optim(par = logllmax1$par, fn = loglik3, time = time, 
                          event = event, covatime = timevarnum,
-                         hP = hP, w = weights, m = m, mpos = mpos, K= K,
+                         hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant, K= K,
                          hessian = TRUE)}
       , error = function(e){logllmax1 <- last_logllmax1})
     })
@@ -323,11 +325,11 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
 
   
   #NULL model
-  logll0 <- function(gamma, time, event, hP, w, m, mpos){
+  logll0 <- function(gamma, time, event, hP, w, m, mpos, mquant){
     return(-1*sum(w*(
-      event * log(hP + (1/time)*splinecubeP(time, gamma, m, mpos)$spln *
-                    exp(splinecube(time, gamma, m)$spln) ) -
-        exp(splinecube(time, gamma, m)$spln)
+      event * log(hP + (1/time)*splinecubeP(time, gamma, m, mpos, mquant)$spln *
+                    exp(splinecube(time, gamma, m, mpos, mquant)$spln) ) -
+        exp(splinecube(time, gamma, m, mpos, mquant)$spln)
      ) )
     ) 
     }
@@ -347,20 +349,20 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
     }
   
   
-  loglik0 <- function(par, time, event, hP, w, m, mpos){
+  loglik0 <- function(par, time, event, hP, w, m, mpos, mquant){
     gamma <- par
-    return(logll0(gamma, time, event, hP, w, m, mpos)) }
+    return(logll0(gamma, time, event, hP, w, m, mpos, mquant)) }
   
   suppressWarnings({
     
   logllmax0 <- optim(par = init0, fn = loglik0, time = time, event = event,
-                     hP = hP, w = weights, m = m, mpos = mpos)
+                     hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant)
   
   indic <- 0
   while(indic <= 5){
     ll_val <- logllmax0$value
     logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
-                       event = event, hP = hP, w = weights, m = m, mpos = mpos)
+                       event = event, hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant)
     delta <- ll_val - logllmax0$value
     if(delta_th == 0){
       if(delta == delta_th) {indic = indic + 1}
@@ -371,8 +373,24 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
   
   logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
                      event = event, hP = hP, w = weights, 
-                     hessian = TRUE, m = m, mpos = mpos)
+                     hessian = TRUE, m = m, mpos = mpos, mquant = mquant)
   })
+  
+  ##récupération de mpos et mquant si ils n'ont pas été spécifiés dans la formule.
+  
+  if(is.null(mpos)){
+    if(is.null(mquant)){
+      a <- c()
+      for(i in (0:(m+1))){
+        a <- c(a,i/(m+1))}
+      mpos <- quantile(log(time), probs = a)
+      mpos <- as.numeric(mpos)
+      mquant <- a 
+    }else{
+      a <- c(mquant)
+      mpos <- quantile(log(time), probs = a)
+    }
+  }
   
   if (!is.null(covnames)){
     
@@ -434,7 +452,8 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, init = N
     x = cova,
     ays = data.frame(age = age, year = year, sex = sex),
     m = m,
-    mpos = mpos
+    mpos = mpos,
+    mquant = mquant
   )
   if (!is.null(xlevels)) {
     res$correstab <- correstab

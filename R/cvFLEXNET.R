@@ -1,6 +1,6 @@
 
 cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10, 
-                      m = 2, mpos = NULL, init = NULL, delta_th = 0,
+                      m = 2, mpos = NULL, mquant = NULL, init = NULL, delta_th = 0,
                       weights = NULL){
   ####### check errors
   if (missing(formula)) stop("a formula argument is required")
@@ -10,17 +10,41 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
     if(length(m) != 1 && !is.null(mpos)) stop(
       "The cross-validation function can't handle multiple 'm' number of knots and multiple 'mpos' knots positions. Please input either multiple 'm' and 'mpos = NULL' or only one 'm' and multiple knots positions.")
   }
+  if(!is.null(m)){
+    if(length(m) != 1 && !is.null(mquant)) stop(
+      "The cross-validation function can't handle multiple 'm' number of knots and multiple 'mquant' knots quantile positions. Please input either multiple 'm' and 'mquant = NULL' or only one 'm' and multiple knots positions.")
+  }
+  if(!is.null(mpos) & !is.null(mquant))warning("'mpos' and 'mquant' have both been specified. 'mpos' values have been chosen over 'mquant' quantiles.") #ligne : mquant = NULL
+  if(!is.null(mpos) & !is.null(mquant)){mquant = NULL} #ligne : mquant = NULL
+  
   if( !is.null(mpos) ){
     if(!is.list(mpos))stop("'mpos' must be a list.")
   }
-  if(length(m) == 1 && !is.null(mpos) && length(unique(sapply(mpos, length))) != 1 )stop(
-    "The different 'mpos' positions must be of the same length (m=",m,")"
+  
+  if( !is.null(mquant) ){
+    if(!is.list(mquant))stop("'mquant' must be a list.")
+  }
+  if(!is.null(mpos)){
+    if(all(sapply(mpos, length) != length(mpos[[1]])))stop("The different knots values must have the same length across the list.")
+  }
+  if(!is.null(mquant)){
+    if(all(sapply(mquant, length) != length(mquant[[1]])))stop("The different knots quantile values must have the same length across the list.")
+  }
+  if(length(m) == 1 && !is.null(mpos) && unique(sapply(mpos, length)) != m+2 )stop(
+    "The different 'mpos' values must be of the same length as the number of internal knots+2 (m+2=",m+2,")"
   )
-  if(is.null(m) && is.null(mpos))stop("No list of hyper parameters ('m' or 'mpos') given to do cross-validation.")
-  #######
+  if(length(m) == 1 && !is.null(mquant) && length(unique(sapply(mquant, length))) != m+2 )stop(
+    "The different 'mquant' quantile positions must be of the same length as the number of internal knots +2 (m+2=",m+2,")"
+  )
+  if (is.null(m) && is.null(mpos) && is.null(mquant)) {
+    stop("No list of hyperparameters ('m', 'mpos', or 'mquant') given to do cross-validation.")
+  }  #######
   
   if(is.null(m) && length(unique(sapply(mpos, length))) == 1){ 
-    m <- unique(sapply(mpos, length))+2
+    m <- unique(sapply(mpos, length))
+  }
+  if(is.null(m) && length(unique(sapply(mquant, length))) == 1){ 
+    m <- unique(sapply(mquant, length))
   }
   
   times <- as.character(formula[[2]][2])
@@ -119,10 +143,12 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
   
   .time <- sort(unique(data.net[,times]))
   
-  if(is.null(mpos)){
-    .grid <-  expand.grid(m = m)}else{
-      .grid <- expand.grid(m = m, mpos  = mpos)
-    }
+  if(is.null(mpos) && is.null(mquant)){
+    .grid <-  expand.grid(m = m)}else if(!is.null(mpos)){
+      .grid <- expand.grid(m = m, mpos  = mpos)}else{
+        .grid <- expand.grid(m = m, mquant  = mquant)
+      }
+    
   
   if(!is.null(init)){
     correstab <- data.frame(
@@ -149,10 +175,14 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
     if(length(xx$grid) == 1){
       m = xx$grid  
       knots = NULL
+    }else if ("mpos" %in% names(xx$grid) ){
+      m = xx$grid$m
+      knots = unlist(xx$grid$mpos)
+      quant = NULL
     }else{
       m = xx$grid$m
-      knots = unlist(xx$grid$knots)
-    }
+      knots = NULL
+      quant = unlist(xx$grid$mquant) }
     
     init = unlist(xx$init)
     
@@ -170,7 +200,7 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
       .data <- .data}
     
     .net <- survivalFLEXNET(.f, data = .data,
-                            m = m, mpos = knots, ratetable = ratetable, init = init,
+                            m = m, mpos = knots, mquant = quant, ratetable = ratetable, init = init,
                             delta_th = delta_th, weights = weights)
     
     .time<-sort(unique(.data[,times]))
@@ -221,18 +251,24 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
   
   .measure<-sapply(.FitCV, net.best.measure, formula = formula , data=data.net, prediction.times=.time)
   
-  if(is.null(mpos)){
+  
+  
+  if(is.null(mpos) && is.null(mquant)){
     .res <- data.frame(m = .grid[,1], measure = .measure)
-  }else{
-    
+  }else if(!is.null(mpos)){
     .res <- data.frame(m = .grid[,1], mpos = as.character(.grid[,2]), measure = .measure)
+  }else{
+    .res <- data.frame(m = .grid[,1], mquant = as.character(.grid[,2]), measure = .measure)
   }
+  
   .maxi<-.res[which(.res$measure==max(.res$measure, na.rm=TRUE) & is.na(.res$measure)==FALSE),]
   .maxi<-.maxi[1,]
   maxi_mpos <- as.numeric(unlist(strsplit(sub("^[^\\(]+\\((.*)\\)$", "\\1",
-                                              as.character(.maxi$knots)), "," ))) 
+                                              as.character(.maxi$mpos)), "," ))) 
+  maxi_mquant <- as.numeric(unlist(strsplit(sub("^[^\\(]+\\((.*)\\)$", "\\1",
+                                                as.character(.maxi$mquant)), "," ))) 
   return( list(optimal=list(m=.maxi$m,
-                            knots = maxi_mpos
+                            knots = maxi_mpos, quants = maxi_mquant
   ),
   results=.res ))
 }
