@@ -8,7 +8,7 @@ Flexible Parametric Net survival
 This function allows to compute a flexible regression with splines for modelling net survival.
 }
 \usage{
-survivalFLEXNET(formula, data, ratetable, m=3, mpos = NULL, init=NULL, delta_th=0,
+survivalFLEXNET(formula, data, ratetable, m=3, mpos = NULL, mquant = NULL, init=NULL, delta_th=0,
 weights=NULL)
 }
 
@@ -20,11 +20,16 @@ time must be in days.}
 \item{data}{A data frame in which to look for the variables included in the \code{formula}.}
 \item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for the
 mortality of the French population, i.e. an array with three dimensions: age, sex and year.}
-\item{m}{A numeric value of the number of internal knots wanted. The first and last knots are 
-automatically included, so there will be m+2 knots.}
-\item{mpos}{A vector of the different knots positions. The positions are the percentiles and must be
-between \] 0:1\[. The first and last knots positions will be automatically chosen to be at the 
-0 and 1 percentile. Default is NULL, and if so, the knots positions will be chosen evenly through percentiles of log(times).}
+\item{m}{A numeric value of the number of internal knots wanted. With the boundary knots, there will
+be m+2 knots. The total number of knots should equal the length of the coefficient vector.}
+\item{mpos}{A vector of the different m+2 knots values positions. The values must be specified on 
+the log scale, as no transformation is done on those values compared to the time vector provided. 
+Default is \code{NULL}, and if so, the knots positions will be chosen evenly
+through percentiles of log(times).}
+\item{mquant}{A vector of the different m+2 knots quantile positions. The positions are the 
+percentiles and must be between [0:1]. Default is \code{NULL}, and if so, the knots positions will 
+be chosen evenly through percentiles of log(times). Will be overwritten by \code{mpos} if both are
+specified.}
 \item{init}{A numeric vector of the initial parameters values for the optimization process. Default
 is set to NULL, which means that all parameters values will be set to 0.}
 \item{delta_th}{A threshold value from which the optimization process stops. Default is set to 0. 
@@ -58,7 +63,6 @@ parameters.
 \value{
 an object of class "\code{survivalNET}".
 \item{formula}{The \code{formula} object.}
-\item{dist}{The distribution of the baseline hazard function of the excess hazard.}
 \item{coefficients}{A vector with the regression coefficients of the excess hazard.}
 \item{var}{The variance-covariance matrix of the regression \code{coefficients}.}
 \item{t.table}{A data frame with the estimates, the standard deviations, Wald statistics, and 
@@ -72,7 +76,10 @@ because of missing data.}
 \item{y}{A matrix with two columns with the observed outcomes: \code{time} and \code{status}.}
 \item{x}{A matrix with the observed covariates.}
 \item{ays}{A data frame with age, birthyear of individuals and gender.}
-\item{call}{Return the call with the specified arguments of the functon.}
+\item{m}{A numeric value of the number of internal knots specified by the user.}
+\item{mpos}{The position of the knots, either provided by the user or computed automatically.}
+\item{mquant}{The quantile values used for the knots selection, either provided by the user or
+computed automatically.}
 \item{correstab}{Correspondance table of the stratified term values.}
 \item{xlevels}{The different levels of the stratified term.}
 \item{levelsval}{The stratified term individual values.}

@@ -175,6 +175,7 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
     if(length(xx$grid) == 1){
       m = xx$grid  
       knots = NULL
+      quant = NULL
     }else if ("mpos" %in% names(xx$grid) ){
       m = xx$grid$m
       knots = unlist(xx$grid$mpos)

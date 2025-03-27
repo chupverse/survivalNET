@@ -79,6 +79,9 @@ because of missing data.}
 \item{x}{A matrix with the observed covariates.}
 \item{ays}{A data frame with age, birthyear of individuals and gender.}
 \item{call}{Return the call with the specified arguments of the functon.}
+\item{correstab}{Correspondance table of the stratified term values.}
+\item{xlevels}{The different levels of the stratified term.}
+\item{levelsval}{The stratified term individual values.}
 }
 
 \references{

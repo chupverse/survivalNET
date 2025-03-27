@@ -3,7 +3,7 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
                                 ratetable = NULL, method = NULL, ...){
     
   if(!(type %in% c("net","lp","overall")))  stop("Argument 
-                  'type' must be 'relative', 'lp' or 'overall' ")
+                  'type' must be 'net', 'lp' or 'overall' ")
   if(type == "overall" && "m" %in% names(object))stop("The 'overall' survival prediction
   for survivalFLEXNET is still under development. Please
                             use 'type = 'relative' or 'lp'. ")
