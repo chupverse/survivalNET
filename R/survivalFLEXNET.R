@@ -175,7 +175,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
         timek <- time[covatime == k]
         eventk <- event[covatime == k]
         hPk <- hP[covatime == k]
-        covak <- cova[covatime == k]
+        covak <- cova[covatime == k, , drop = FALSE]
         wk <- w[covatime == k]
         value_strate <- -1*sum(wk * (eventk * log(hPk + (1/timek)*splinecubeP(timek, gammak, m, mpos, mquant)$spln*
                                      exp(splinecube(timek, gammak, m, mpos, mquant)$spln + as.matrix(covak) %*% beta) ) -
