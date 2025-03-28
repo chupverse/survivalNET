@@ -17,7 +17,7 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
     
     newtimesSave <- newtimes
         
-    newtimes <- sort(c((1:max(object$y[,1])),unique(newtimes)))}
+    newtimes <- unique( sort( c( (1:max(object$y[,1])),unique(newtimes) ) ) )}
   
   if(0 %in% newtimes){
       newtimes <- sort(newtimes[-(newtimes == 0)])
@@ -35,7 +35,7 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
     
       indic <- covnames %in% names(newdata) 
       if( sum(!indic) > 0 ) stop("Missing predictor in the data frame")
-      covariates <- as.data.frame(as.matrix(newdata[,covnames]))
+      covariates <- newdata[,covnames]
       names(covariates) <- covnames
       
       if(type=="overall"){
@@ -287,16 +287,21 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
                 flex_net_strata_cov <- function(x, covariates, gammas, timecov, K=NULL) {
                   n <- dim(covariates)[1]
                   timpos <- dim(covariates)[2]
-                  rend <- data.frame()
-                  for (i in 1:n){
-                    timeval <- covariates[i,timpos]
-                    gammai <- gammas[,timeval]
-                    covariatesi <- covariates[i,-timpos]
-                    splnvalues <- splinecube(x, gammai, m, mpos )$spln
-                    sur <-exp(-1*exp(as.vector(as.numeric(covariatesi)%*%beta))*exp( splnvalues ))
-                    rend <- rbind(rend, sur)
-                  }
-                  rend
+                  timeval <- covariates[, timpos]  # Extract all time variable indices
+                  splnvalues_list <- lapply(unique(timeval), function(tv) 
+                    splinecube(x, gammas[, tv], m, mpos)$spln)
+                  
+                  splnvalues_map <- setNames(splnvalues_list, unique(timeval))
+                  
+                  # Precompute linear predictors
+                  covariates_matrix <- as.matrix(covariates[, -timpos, drop = FALSE])
+                  linpred <- covariates_matrix %*% beta
+                  
+                  # Compute survival estimates using vectorized operations
+                  splnvalues <- t(sapply(timeval, function(tv) splnvalues_map[[as.character(tv)]]))
+                  sur <- exp(-exp(as.vector(linpred)) * exp(splnvalues))
+                  
+                  return(sur)
                 }
               }
              
@@ -308,15 +313,16 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
                 flex_net_strata_nocov <- function(x, covariates, gammas, timecov, K=NULL) {
                   n <- dim(covariates)[1]
                   timpos <- dim(covariates)[2]
-                  rend <- data.frame()
-                  for (i in 1:n){
-                    timeval <- covariates[i,timpos]
-                    gammai <- gammas[,timeval]
-                    splnvalues <- splinecube(x, gammai, m, mpos )$spln
-                    sur <-exp(-1*exp( splnvalues ))
-                    rend <- rbind(rend, sur)
-                  }
-                  rend
+                  splnvalues_list <- lapply(unique(timeval), function(tv) 
+                    splinecube(x, gammas[, tv], m, mpos)$spln)
+                  
+                  splnvalues_map <- setNames(splnvalues_list, unique(timeval))
+                  
+                  # Compute survival estimates using vectorized operations
+                  splnvalues <- t(sapply(timeval, function(tv) splnvalues_map[[as.character(tv)]]))
+                  sur <- exp(-1*exp(splnvalues))
+                  
+                  return(sur)
                 }
               }
        }  
