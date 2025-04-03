@@ -541,6 +541,7 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
                 timevar <- as.character(unlist(covariates[names(object$xlevels)]))
                 timevarnum <- as.numeric(correstab[timevar]) 
                 covariates[,dim(covariates)[2]] <- timevarnum
+                covariates <- data.frame(lapply(covariates, as.numeric))
                 timecov <- names(object$xlevels)
                 
                 K = sort(unique(timevarnum))
@@ -589,6 +590,7 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
             timevar <- as.character(unlist(covariates[names(object$xlevels)]))
             timevarnum <- as.numeric(correstab[timevar]) 
             covariates[,dim(covariates)[2]] <- timevarnum
+            covariates <- data.frame(lapply(covariates, as.numeric))
             timecov <- names(object$xlevels)
             
             K = sort(unique(timevarnum))
@@ -640,6 +642,7 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
             timevar <- as.character(unlist(covariates[names(object$xlevels)]))
             timevarnum <- as.numeric(correstab[timevar]) 
             covariates[,dim(covariates)[2]] <- timevarnum
+            covariates <- data.frame(lapply(covariates, as.numeric))
             timecov <- names(object$xlevels)
             
             K = sort(unique(timevarnum))
@@ -687,6 +690,7 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
             timevar <- as.character(unlist(covariates[names(object$xlevels)]))
             timevarnum <- as.numeric(correstab[timevar]) 
             covariates[,dim(covariates)[2]] <- timevarnum
+            covariates <- data.frame(lapply(covariates, as.numeric))
             timecov <- names(object$xlevels)
             
             K = sort(unique(timevarnum))
