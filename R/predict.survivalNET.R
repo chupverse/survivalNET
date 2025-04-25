@@ -25,9 +25,9 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
     
   if(!is.null(newdata))
     { 
-    n <- dim(newdata)[1]
       if(!is.data.frame(newdata)) stop("Argument 'newdata' must be a data frame")
-    
+      n <- dim(newdata)[1]
+
       covnames <- names(as.data.frame(object$x))
       if ("xlevels" %in% names(object)) {
         covnames <- c(covnames, names(object$xlevels)) 
@@ -35,7 +35,7 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
     
       indic <- covnames %in% names(newdata) 
       if( sum(!indic) > 0 ) stop("Missing predictor in the data frame")
-      covariates <- newdata[,covnames]
+      covariates <- newdata[,covnames, drop =FALSE]
       names(covariates) <- covnames
       
       if(type=="overall"){
@@ -221,10 +221,10 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
                   for (i in 1:n){
                     timeval <- covariates[i,timpos]
                     covi <- covariates[i,-timpos]
-                    sigmak <- sigmas[timeval]
-                    nuk <- nus[timeval]
-                    thetak <- thetas[timeval]
-                    sur <-exp( exp(covi%*%beta)*(1-(1+(x/sigmak)^nuk)^(1/thetak)) )
+                    sigmak <- as.vector(sigmas[timeval])
+                    nuk <- as.vector(nus[timeval])
+                    thetak <- as.vector(thetas[timeval])
+                    sur <-exp( exp(as.numeric(as.matrix(covi)%*%beta))*(1-(1+(x/sigmak)^nuk)^(1/thetak)) )
                     rend <- rbind(rend, sur)
                   }
                   rend
@@ -526,7 +526,8 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
             ##avec covariables
               if(dim(object$x)[2] != 0){
                 
-                   predictions <- sapply(newtimes, FUN = "net_cov")}
+                   predictions <- matrix(sapply(newtimes, FUN = "net_cov"),nrow = n)
+                                         }
             
             ##sans covariables
               if(dim(object$x)[2] == 0){
@@ -537,7 +538,7 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
         ##avec strate
           if ("xlevels" %in% names(object)){
            
-               correstab <- object$correstab
+                correstab <- object$correstab
                 timevar <- as.character(unlist(covariates[names(object$xlevels)]))
                 timevarnum <- as.numeric(correstab[timevar]) 
                 covariates[,dim(covariates)[2]] <- timevarnum
@@ -574,7 +575,8 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
              ##avec covariables
                 if(dim(object$x)[2] != 0){
                     
-                  predictions <- sapply(splnvalues, FUN = "flex_net_cov")}
+                  predictions <- matrix(sapply(splnvalues, FUN = "flex_net_cov"),nrow = n)
+                  }
              
              ##sans covariables 
                 if(dim(object$x)[2] == 0){
@@ -611,9 +613,8 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
                                         timecov, K= K)}
           }
   } 
-    
-  predictions <- unname(cbind(rep(1, dim(predictions)[1]), predictions))
-    
+  
+    predictions <- unname(cbind(rep(1, dim(predictions)[1]), predictions))
   }
   
   if (type == "overall"){
