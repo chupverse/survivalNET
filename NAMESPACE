@@ -13,7 +13,6 @@ importFrom("graphics", "abline", "lines", "plot.default", "grid", "segments")
 
 importFrom("RISCA", "roc.time")
 
-#importFrom("lubridate", "period")
 
 export(survivalNET)
 export(survivalFLEXNET)
