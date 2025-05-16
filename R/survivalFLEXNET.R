@@ -1,6 +1,5 @@
-
 survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant = NULL, init = NULL, 
-                            delta_th = 0, weights=NULL)
+                               delta_th = 0, weights=NULL)
 {
   
   ####### check errors
@@ -67,7 +66,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     timevar <- data[,strata_var]
     xlevels <- list(levels(as.factor(timevar)))
     names(xlevels) <- c(strata_var)
-    }
+  }
   if(!is.null(timevar)){
     if(length(unique(timevar))>15) stop("The variable with a time-dependant effect has too many categories (>15)")
   }
@@ -99,7 +98,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
   
   ###### Compute the expected mortality of individuals
   
-
+  
   hP <- sapply(seq_along(time), function(i) {
     expectedhaz(ratetable = ratetable, age = age[i], sex = sex[i], year = year[i], time = time[i])
   })
@@ -120,11 +119,11 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     }else{gamma_names <- paste0("gamma", 2:(m+1))}
     
     label <- c(covnames, "gamma0",
-                   "gamma1", gamma_names)
+               "gamma1", gamma_names)
     
     if(!is.null(init)){
       if(length(init) != dim(cova)[2]+m+2) stop("'init' length must be ", dim(cova)[2]+m+2,
-                                      " ( ", dim(cova)[2]," covariate(s) and ",m+2," parameters for the Restricted Cubic Spline).")
+                                                " ( ", dim(cova)[2]," covariate(s) and ",m+2," parameters for the Restricted Cubic Spline).")
       init1 <- init
     }else{init1 <- c(rep(0,dim(cova)[2]+m+2))}
     
@@ -134,135 +133,163 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
       return(logll1(beta, gamma, time, event, cova, hP, w, m, mpos, mquant)) }
     
     suppressWarnings({
-    logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
-                       cova = cova, hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant)
-    
-    indic <- 0
-    while(indic <= 5){
-      ll_val <- logllmax1$value
+      logllmax1 <- optim(par = init1, fn = loglik1, time = time, event = event,
+                         cova = cova, hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant)
+      
+      indic <- 0
+      while(indic <= 5){
+        ll_val <- logllmax1$value
+        logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
+                           event = event, cova = cova, hP = hP, w = weights,
+                           m = m, mpos = mpos, mquant = mquant)
+        delta <- ll_val - logllmax1$value
+        if(delta_th == 0){
+          if(delta == delta_th) {indic = indic + 1}
+        }else{ 
+          if(0 < delta & delta <= delta_th) {indic = indic + 1}
+        }      }
+      
       logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
                          event = event, cova = cova, hP = hP, w = weights,
-                         m = m, mpos = mpos, mquant = mquant)
-      delta <- ll_val - logllmax1$value
-      if(delta_th == 0){
-        if(delta == delta_th) {indic = indic + 1}
-      }else{ 
-        if(0 < delta & delta <= delta_th) {indic = indic + 1}
-      }      }
-    
-    logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
-                       event = event, cova = cova, hP = hP, w = weights,
-                       m = m, mpos = mpos, mquant = mquant,
-                       hessian = TRUE)
+                         m = m, mpos = mpos, mquant = mquant,
+                         hessian = TRUE)
     })
-  
+    
   }
   
   if(!is.null(covnames) & !is.null(timevar)){
     
     timevarnames <- sort(unique(timevar))
     correstab <- setNames(seq_along(timevarnames), timevarnames)
-    
     timevarnum <- as.numeric(correstab[as.character(timevar)])
+    K <- sort(unique(timevarnum))
     
-    K = sort(unique(timevarnum))
-    
-    logll2 <- function(beta, gamma, time, event, cova, covatime, hP, w, m, mpos, mquant, K){
+    logll2 <- function(beta, gamma0, gamma, time, event, cova, covatime, hP, w, m, mpos, mquant, K) {
+      # Compute baseline spline for all observations
+      splbase <- splinecube(time, gamma0, m, mpos, mquant)$spln
+      splbaseP <- splinecubeP(time, gamma0, m, mpos, mquant)$spln
       
-      value = 0
-      for(k in K){
-        gammak <- gamma[,k] 
-        timek <- time[covatime == k]
-        eventk <- event[covatime == k]
-        hPk <- hP[covatime == k]
-        covak <- cova[covatime == k, , drop = FALSE]
-        wk <- w[covatime == k]
-        value_strate <- -1*sum(wk * (eventk * log(hPk + (1/timek)*splinecubeP(timek, gammak, m, mpos, mquant)$spln*
-                                     exp(splinecube(timek, gammak, m, mpos, mquant)$spln + as.matrix(covak) %*% beta) ) -
-          exp(splinecube(timek, gammak, m, mpos, mquant)$spln + as.matrix(covak) %*% beta)
-        )
-        )
-        value <- value +value_strate
+      value <- 0
+      for (k in K) {
+        gammak <- gamma[, k]
+        idx <- covatime == k
+        
+        timek <- time[idx]
+        eventk <- event[idx]
+        hPk <- hP[idx]
+        covak <- cova[idx, , drop = FALSE]
+        wk <- w[idx]
+        
+        splk <- splinecube(timek, gammak, m, mpos, mquant)$spln
+        splkP <- splinecubeP(timek, gammak, m, mpos, mquant)$spln
+        linpred <- splbase[idx] + splk + as.matrix(covak) %*% beta
+        
+        value_strate <- -1 * sum(wk * (eventk * log(hPk + (1 / timek) * (splbaseP[idx] + splkP) * exp(linpred)) - exp(linpred)))
+        value <- value + value_strate
       }
       return(value)
     }
     
+    # Label creation
     if (m == 0) {
-      for (i in timevarnames) {
-        assign(paste0("gamma_names", i), NULL)
-      }
-    }else {
-      for (i in timevarnames) {
-        assign(paste0("gamma_names", i), paste0("gamma", i, "_", 2:(m+1)))
-      }
+      for (i in timevarnames) assign(paste0("gamma_names", i), NULL)
+    } else {
+      for (i in timevarnames) assign(paste0("gamma_names", i), paste0("gamma", i, "_", 2:(m + 1)))
     }
     
     label <- covnames
+    label <- c(label, paste0("gamma0_", 0:(m + 1)))  # Add baseline gamma names
     for (i in timevarnames) {
       label <- c(label, paste0("gamma", i, "_0"), paste0("gamma", i, "_1"), get(paste0("gamma_names", i)))
     }
     
-    if(!is.null(init)){
-      if(length(init) != dim(cova)[2]+(length(K)*(m+2))) stop("'init' length must be ", dim(cova)[2]+m+2,
-                                                " ( ", dim(cova)[2]," covariate(s) and ",(length(K)*(m+2))," parameters for the Restricted Cubic Spline for each level (",length(K),") of the covariate with a time dependant effect).")
+    # Parameter initialization
+    n_beta <- dim(cova)[2]
+    n_gamma0 <- m + 2
+    n_gammak <- length(K) * (m + 2)
+    
+    if (!is.null(init)) {
+      if (length(init) != n_beta + n_gamma0 + n_gammak)
+        stop("'init' length must be ", n_beta + n_gamma0 + n_gammak, " (",
+             n_beta, " covariate(s), ", n_gamma0, " baseline gamma, ",
+             " and ", n_gammak, " time-dependent spline parameters).")
       init1 <- init
-    }else{init1 <- c(rep(0,dim(cova)[2]+(length(K)*(m+2)))) }
-    
-    loglik2 <- function(par, time, event, cova, covatime, hP, w, m, mpos, mquant, K){
-      beta <- par[1:dim(cova)[2]]
-      gamma <-matrix(par[(dim(cova)[2]+1):(dim(cova)[2]+(length(K)*(m+2)))], ncol = length(K))
+    } else {
+      init1 <- rep(0, n_beta + n_gamma0 + n_gammak)
+    }
+    loglik2 <- function(par, time, event, cova, covatime, hP, w, m, mpos, mquant, K) {
+      beta <- par[1:n_beta]
+      gamma0 <- par[(n_beta + 1):(n_beta + n_gamma0)]
+      gamma <- matrix(par[(n_beta + n_gamma0 + 1):length(par)], ncol = length(K))
       
-      return(logll2(beta, gamma, time, event, cova, covatime, hP, w, m, mpos, mquant, K)) }
+      logll2(beta, gamma0, gamma, time, event, cova, covatime, hP, w, m, mpos, mquant, K)
+    }
     
+    # Optimization
     suppressWarnings({
-    logllmax1 <- optim(par = init1, fn = loglik2, time = time, event = event,
-                       cova = cova, covatime = timevarnum, hP = hP, w = weights
-                       , m = m, mpos = mpos, mquant = mquant, K= K)
-    
-    indic <- 0
-    while(indic <= 5){
-      last_logllmax1 <- logllmax1
-      ll_val <- logllmax1$value
-      logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, 
-                         event = event, cova = cova, covatime = timevarnum,
-                         hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant, K = K)
-      delta <- ll_val - logllmax1$value
-      if(delta_th == 0){
-        if(delta == delta_th) {indic = indic + 1}
-      }else{ 
-        if(0 < delta & delta <= delta_th) {indic = indic + 1}
-      }      }
-    
-    tryCatch({logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, 
-                       event = event, cova = cova, covatime = timevarnum,
-                       hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant, K= K,
-                       hessian = TRUE)
-             
-    }, error = function(e){logllmax1 <- last_logllmax1})
+      logllmax1 <- optim(par = init1, fn = loglik2, time = time, event = event,
+                         cova = cova, covatime = timevarnum, hP = hP, w = weights,
+                         m = m, mpos = mpos, mquant = mquant, K = K)
+      
+      indic <- 0
+      while (indic <= 5) {
+        last_logllmax1 <- logllmax1
+        ll_val <- logllmax1$value
+        
+        logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, event = event,
+                           cova = cova, covatime = timevarnum, hP = hP, w = weights,
+                           m = m, mpos = mpos, mquant = mquant, K = K)
+        
+        delta <- ll_val - logllmax1$value
+        if (delta_th == 0) {
+          if (delta == delta_th) indic <- indic + 1
+        } else {
+          if (0 < delta & delta <= delta_th) indic <- indic + 1
+        }
+      }
+      
+      tryCatch({
+        logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, event = event,
+                           cova = cova, covatime = timevarnum, hP = hP, w = weights,
+                           m = m, mpos = mpos, mquant = mquant, K = K,
+                           hessian = TRUE)
+      }, error = function(e) {
+        logllmax1 <- last_logllmax1
+      })
     })
+    
   }
   
   if (is.null(covnames) & !is.null(timevar)){
     
     timevarnames <- sort(unique(timevar))
     correstab <- setNames(seq_along(timevarnames), timevarnames)
-    
     timevarnum <- as.numeric(correstab[as.character(timevar)])
-    
     K = sort(unique(timevarnum))
     
-    logll3 <- function(gamma, time, event, covatime, hP, w, m, mpos, mquant, K){
+    logll3 <- function(gamma0, gamma, time, event, covatime, hP, w, m, mpos, mquant, K){
+      
+      splbase <- splinecube(time, gamma0, m, mpos, mquant)$spln
+      splbaseP <- splinecubeP(time, gamma0, m, mpos, mquant)$spln
       
       value = 0
       for(k in K){
         gammak <- gamma[,k] 
-        timek <- time[covatime == k]
-        eventk <- event[covatime == k]
-        hPk <- hP[covatime == k]
-        wk <- w[covatime == k]
-        value_strate <- -1*sum(wk * (eventk * log(hPk + (1/timek)*splinecubeP(timek, gammak, m, mpos, mquant)$spln*
-                                                    exp(splinecube(timek, gammak, m, mpos, mquant)$spln ) ) -
-                                       exp(splinecube(timek, gammak, m, mpos, mquant)$spln)
+        
+        idx <- covatime == k
+        
+        timek <- time[idx]
+        eventk <- event[idx]
+        hPk <- hP[idx]
+        covak <- cova[idx, , drop = FALSE]
+        wk <- w[idx]
+        
+        splk <- splinecube(timek, gammak, m, mpos, mquant)$spln
+        splkP <- splinecubeP(timek, gammak, m, mpos, mquant)$spln
+        linpred <- splbase[idx] + splk 
+        
+        value_strate <- -1*sum(wk * (eventk * log(hPk + (1/timek)* (splbaseP[idx] + splkP) *
+                                                    exp(linpred ) ) - exp(linpred)
         )
         )
         value <- value +value_strate
@@ -281,24 +308,36 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     }
     
     label <- covnames
+    label <- c(label, paste0("gamma0_", 0:(m + 1)))
     for (i in timevarnames) {
       label <- c(label, paste0("gamma", i, "_0"), paste0("gamma", i, "_1"), get(paste0("gamma_names", i)))
     }
     
-    if(!is.null(init)){
-      if(length(init) != (length(K)*(m+2))) stop("'init' length must be ",(length(K)*(m+2))," (",(length(K)*(m+2))," parameters for the Restricted Cubic Spline for each level (",length(K),") of the covariate with a time dependant effect).")
+    # Parameter initialization
+    n_beta <- dim(cova)[2]
+    n_gamma0 <- m + 2
+    n_gammak <- length(K) * (m + 2)
+    
+    if (!is.null(init)) {
+      if (length(init) != n_beta + n_gamma0 + n_gammak)
+        stop("'init' length must be ", n_beta + n_gamma0 + n_gammak, " (",
+             n_beta, " covariate(s), ", n_gamma0, " baseline gamma, ",
+             " and ", n_gammak, " time-dependent spline parameters).")
       init1 <- init
-    }else{init1 <- rep(0,(length(K)*(m+2)))}
+    } else {
+      init1 <- rep(0, n_beta + n_gamma0 + n_gammak)
+    }
     
     loglik3 <- function(par, time, event, covatime, hP, w, m, mpos, mquant, K){
-     
-       gamma <-matrix(par[1:((length(K)*(m+2)))], ncol = length(K))
       
-      return(logll3(gamma, time, event, covatime, hP, w, m, mpos, mquant, K)) }
+      gamma0 <- par[(n_beta + 1):(n_beta + n_gamma0)]
+      gamma <- matrix(par[(n_beta + n_gamma0 + 1):length(par)], ncol = length(K))
+      
+      return(logll3(gamma0, gamma, time, event, covatime, hP, w, m, mpos, mquant, K)) }
     
     suppressWarnings({
       logllmax1 <- optim(par = init1, fn = loglik3, time = time, event = event,
-                          covatime = timevarnum, hP = hP, w = weights
+                         covatime = timevarnum, hP = hP, w = weights
                          , m = m, mpos = mpos, mquant = mquant, K= K)
       
       indic <- 0
@@ -316,13 +355,13 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
         }        }
       
       tryCatch({logllmax1 <- optim(par = logllmax1$par, fn = loglik3, time = time, 
-                         event = event, covatime = timevarnum,
-                         hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant, K= K,
-                         hessian = TRUE)}
-      , error = function(e){logllmax1 <- last_logllmax1})
+                                   event = event, covatime = timevarnum,
+                                   hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant, K= K,
+                                   hessian = TRUE)}
+               , error = function(e){logllmax1 <- last_logllmax1})
     })
   }
-
+  
   
   #NULL model
   logll0 <- function(gamma, time, event, hP, w, m, mpos, mquant){
@@ -330,23 +369,23 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
       event * log(hP + (1/time)*splinecubeP(time, gamma, m, mpos, mquant)$spln *
                     exp(splinecube(time, gamma, m, mpos, mquant)$spln) ) -
         exp(splinecube(time, gamma, m, mpos, mquant)$spln)
-     ) )
+    ) )
     ) 
-    }
+  }
   
   if(m == 0){gamma_names = NULL
   }else{gamma_names <- paste0("gamma", 2:(m+1))}
   
   labelNULL <- c(covnames, "gamma0",
-             "gamma1", gamma_names)
+                 "gamma1", gamma_names)
   
   if(is.null(covnames) & is.null(timevar)){
     if(!is.null(init)){
       if(length(init) != (m+2)) stop("'init' length must be ",(m+2)," (",(m+2)," parameters for the Restricted Cubic Spline).")
-    init0 <- init}else{init0 <- rep(0,m+2)
-    }}else{
-      init0 <- rep(0,m+2)
-    }
+      init0 <- init}else{init0 <- rep(0,m+2)
+      }}else{
+        init0 <- rep(0,m+2)
+      }
   
   
   loglik0 <- function(par, time, event, hP, w, m, mpos, mquant){
@@ -355,25 +394,25 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
   
   suppressWarnings({
     
-  logllmax0 <- optim(par = init0, fn = loglik0, time = time, event = event,
-                     hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant)
-  
-  indic <- 0
-  while(indic <= 5){
-    ll_val <- logllmax0$value
-    logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
-                       event = event, hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant)
-    delta <- ll_val - logllmax0$value
-    if(delta_th == 0){
-      if(delta == delta_th) {indic = indic + 1}
-    }else{ 
-      if(0 < delta & delta <= delta_th) {indic = indic + 1}
-    }  
+    logllmax0 <- optim(par = init0, fn = loglik0, time = time, event = event,
+                       hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant)
+    
+    indic <- 0
+    while(indic <= 5){
+      ll_val <- logllmax0$value
+      logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
+                         event = event, hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant)
+      delta <- ll_val - logllmax0$value
+      if(delta_th == 0){
+        if(delta == delta_th) {indic = indic + 1}
+      }else{ 
+        if(0 < delta & delta <= delta_th) {indic = indic + 1}
+      }  
     }
-  
-  logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
-                     event = event, hP = hP, w = weights, 
-                     hessian = TRUE, m = m, mpos = mpos, mquant = mquant)
+    
+    logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
+                       event = event, hP = hP, w = weights, 
+                       hessian = TRUE, m = m, mpos = mpos, mquant = mquant)
   })
   
   ##récupération de mpos et mquant si ils n'ont pas été spécifiés dans la formule.
@@ -463,9 +502,4 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
   class(res) <- "survivalNET"
   return(res)
 }
-
-
-
-
-
 
