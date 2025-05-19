@@ -215,9 +215,6 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
         ##avec covariables
         if(dim(object$x)[2] != 0){
           
-          gamma0 <- object$coefficients[(dim(object$x)[2]+1):(dim(object$x)[2]+ object$m+2)]
-          gammas <- matrix(object$coefficients[-(1:(dim(object$x)[2]+ object$m+2))], ncol = length(object$xlevels[[1]]))
-          
           flex_net_strata_cov <- function(x, covariates, gamma0, gammas) {
             n <- dim(covariates)[1]
             timpos <- dim(covariates)[2]
@@ -244,9 +241,6 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
         
         ##pas de covariables 
         if(dim(object$x)[2] == 0){
-          
-          gamma0 <- object$coefficients[(dim(object$x)[2]+1):(dim(object$x)[2]+ object$m+2)]
-          gammas <- matrix(object$coefficients[-(1:(dim(object$x)[2]+ object$m+2))], ncol = length(object$xlevels[[1]]))
           
           flex_net_strata_nocov <- function(x, covariates, gamma0, gammas) {
             n <- dim(covariates)[1]
@@ -348,6 +342,9 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
         timevarnum <- as.numeric(correstab[timevar]) 
         covariates[,dim(covariates)[2]] <- timevarnum
         covariates <- data.frame(lapply(covariates, as.numeric))
+        
+        gamma0 <- object$coefficients[(dim(object$x)[2]+1):(dim(object$x)[2]+ object$m+2)]
+        gammas <- matrix(object$coefficients[-(1:(dim(object$x)[2]+ object$m+2))], ncol = length(object$xlevels[[1]]))
         
         ##avec covariables
         if(dim(object$x)[2] != 0){
