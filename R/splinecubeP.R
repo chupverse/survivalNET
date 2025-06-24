@@ -1,5 +1,7 @@
 
-splinecubeP <- function(time, gamma, m, mpos = NULL)
+
+splinecubeP <- function(time, gamma, m, mpos = NULL, mquant = NULL)
+
   
 {
   
@@ -9,22 +11,27 @@ splinecubeP <- function(time, gamma, m, mpos = NULL)
   
   if(length(gamma)!=(m+2))stop("The length of the gamma's coefficients vector
                                 should be ", m+2)
-  if(!is.null(mpos) & m != length(mpos))(stop("number of internal knots
-                                positions must be equal to m=", m))
+  if(!is.null(mpos) & m+2 != length(mpos))stop("Number of knots positions must be equal to m+2=", m+2)
+  if(!is.null(mquant) & m+2 != length(mquant))stop("Number of knots quantile positions must be equal to m+2=", m+2)
+  if(!is.null(mpos) & !is.null(mquant))warning("'mpos' and 'mquant' have both been specified. 'mpos' values have been chosen over 'mquant' quantiles.")
   
   ##
   
   x <- log(time)
   
-  if(is.null(mpos) == TRUE){
-    a <- c()
-    for(i in (0:(m+1))){
-      a <- c(a,i/(m+1))}
-    mpos <- quantile(x, probs = a)
-    mpos <- as.numeric(mpos)}
-  else{
-    a <- c(0,mpos,1)
-    mpos <- quantile(x, probs = a)
+  if(is.null(mpos)){
+    if(is.null(mquant)){
+      a <- c()
+      for(i in (0:(m+1))){
+        a <- c(a,i/(m+1))}
+      mpos <- quantile(x, probs = a)
+      mpos <- as.numeric(mpos)
+    }else{
+      a <- c(mquant)
+      mpos <- quantile(x, probs = a)
+    }
+  }else{
+    a <- NULL
   }
   
   if(m==0){
@@ -33,20 +40,23 @@ splinecubeP <- function(time, gamma, m, mpos = NULL)
      res <- list(
       spln = spln,
       mpos = mpos)
-  }
-  else{
+  }else{
     phi <- c()
     nu_prime <- c()
     spln <- 0
     for(i in 2:(length(gamma)-1)){
       phi <- c(phi, (mpos[m+2]-mpos[i])/(mpos[m+2]-mpos[1]))
       nu_prime <- cbind(nu_prime,3*pmax(0,(x-mpos[i]))^2-3*phi[i-1]*pmax(0,(x-mpos[1]))^2-3*(1-phi[i-1])*pmax(0,(x-mpos[m+2]))^2)
-      spln <- spln + gamma[i+1]*nu_prime[,i-1] }
+    }
+
+    for(i in 2:(length(gamma)-1)){
+    spln <- spln + gamma[i+1]*nu_prime[,i-1] }
     spln <- spln + gamma[2]
     
     res <- list(
       spln = spln,
       knots = mpos,
+      quantiles = a,
       phi = phi,
       nu_prime = nu_prime)
   }

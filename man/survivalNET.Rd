@@ -54,14 +54,15 @@ parameters.
 The following hazard functions available are:   
 \tabular{rrl}{
 exponential \tab Exponential distribution \tab \eqn{\lambda(t)=1/\sigma} \cr											
-weibull \tab Weibull distribution \tab \eqn{\lambda(t)=\nu(\frac{1}{\sigma})^{\nu}t^{\nu-1}} \cr
-genweibull \tab Generalized Weibull distribution \tab \eqn{\lambda(t)=\frac{1}{\theta}\left(1+\left(\frac{t}{\sigma}\right)^{\nu}\right)^{\frac{1}{\theta}-1} \nu\left(\frac{1}{\sigma}\right)^{\nu} 
+weibull \tab Weibull distribution \tab \eqn{\lambda(t)=\nu(1/\sigma)^{\nu}t^{\nu-1}} \cr
+genweibull \tab Generalized Weibull distribution \tab \eqn{\lambda(t)=1/\theta(1+(t/\sigma)^{\nu})^{1/\theta-1} \nu(1/\sigma)^{\nu} 
 t^{\nu-1}}
 }
 with \eqn{\sigma}, \eqn{\nu},and \eqn{\theta>0}. 
 }
 
 \value{
+an object of class "\code{survivalNET}".
 \item{formula}{The \code{formula} object.}
 \item{dist}{The distribution of the baseline hazard function of the excess hazard.}
 \item{coefficients}{A vector with the regression coefficients of the excess hazard.}
@@ -78,6 +79,9 @@ because of missing data.}
 \item{x}{A matrix with the observed covariates.}
 \item{ays}{A data frame with age, birthyear of individuals and gender.}
 \item{call}{Return the call with the specified arguments of the functon.}
+\item{correstab}{Correspondance table of the stratified term values.}
+\item{xlevels}{The different levels of the stratified term.}
+\item{levelsval}{The stratified term individual values.}
 }
 
 \references{
