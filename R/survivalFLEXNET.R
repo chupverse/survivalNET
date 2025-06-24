@@ -1,5 +1,5 @@
 survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant = NULL, init = NULL, 
-                            delta_th = 0, weights=NULL)
+                               delta_th = 0, weights=NULL)
 {
   
   ####### check errors
@@ -26,19 +26,17 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
   ratetable_terms <- grep("^ratetable\\(", all_terms, value = TRUE)
   if(length(ratetable_terms) == 0) stop("Error: The formula must contain a ratetable() term.")
   if(length(ratetable_terms)>1) stop("More than one 'ratetable' term found in  the formula.")
-  extract_vars <- function(term) {
-    var_string <- sub("^[^\\(]+\\((.*)\\)$", "\\1", term)
-    vars <- trimws(unlist(strsplit(var_string, ",")))
-    return(vars)
-  }  
-  strata_var = unlist(lapply(strata_terms, extract_vars))
-  CV <- setdiff(c(all_terms,strata_var), c(strata_terms, ratetable_terms))
+  CV <- setdiff(all_terms, c(strata_terms, ratetable_terms))
   if(length(CV) == 0){covnames = "1"} else{covnames <- CV}  
   label<- NULL
   covs <- as.formula(paste("~", paste(covnames, collapse = " + ")))
   cova <- model.matrix(covs, data)[, -1, drop = FALSE]
   covnames <- colnames(cova)
-  
+  extract_vars <- function(term) {
+    var_string <- sub("^[^\\(]+\\((.*)\\)$", "\\1", term)
+    vars <- trimws(unlist(strsplit(var_string, ",")))
+    return(vars)
+  }
   assign_ratetable_vars <- function(vars) {
     age <- year <- sex <- NULL
     for (var in vars) {
@@ -59,7 +57,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     return(list(age = age, year = year, sex = sex))
   }
   strata_var = unlist(lapply(strata_terms, extract_vars))
-  # if(!is.null(strata_var) && strata_var %in% covnames) stop("The stratified covariate also appears as a covariate in the formula.")
+  if(!is.null(strata_var) && strata_var %in% covnames) stop("The stratified covariate also appears as a covariate in the formula.")
   if(is.null(strata_var)){
     timevar = strata_var
     xlevels = NULL
