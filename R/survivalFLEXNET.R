@@ -1,5 +1,5 @@
 survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant = NULL, init = NULL, 
-                               delta_th = 0, weights=NULL)
+                             delta_th = 0, weights=NULL)
 {
   
   ####### check errors
@@ -164,100 +164,93 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     timevarnum <- as.numeric(correstab[as.character(timevar)])
     K <- sort(unique(timevarnum))
     
-    logll2 <- function(beta, gamma0, gamma, time, event, cova, covatime, hP, w, m, mpos, mquant, K) {
-      # Compute baseline spline for all observations
-      splbase <- splinecube(time, gamma0, m, mpos, mquant)$spln
-      splbaseP <- splinecubeP(time, gamma0, m, mpos, mquant)$spln
+    logll2 <- function(beta, gamma, time, event, cova, covatime, hP, w, m, mpos, mquant, k) {
       
-      value <- 0
-      for (k in K) {
-        gammak <- gamma[, k]
-        idx <- covatime == k
-        
-        timek <- time[idx]
-        eventk <- event[idx]
-        hPk <- hP[idx]
-        covak <- cova[idx, , drop = FALSE]
-        wk <- w[idx]
-        
-        splk <- splinecube(timek, gammak, m, mpos, mquant)$spln
-        splkP <- splinecubeP(timek, gammak, m, mpos, mquant)$spln
-        linpred <- splbase[idx] + splk + as.matrix(covak) %*% beta
-        
-        value_strate <- -1 * sum(wk * (eventk * log(hPk + (1 / timek) * (splbaseP[idx] + splkP) * exp(linpred)) - exp(linpred)))
-        value <- value + value_strate
-      }
-      return(value)
+      betak <- beta
+      gammak <- gamma
+      idx <- covatime == k
+      
+      timek <- time[idx]
+      eventk <- event[idx]
+      hPk <- hP[idx]
+      covak <- cova[idx, , drop = FALSE]
+      wk <- w[idx]
+      
+      splk <- splinecube(timek, gammak, m, mpos, mquant)$spln
+      splkP <- splinecubeP(timek, gammak, m, mpos, mquant)$spln
+      linpred <- splk + as.matrix(covak) %*% as.matrix(betak)
+      
+      value_strate <- -1 * sum(wk * (eventk * log(hPk + (1 / timek) * splkP * exp(linpred)) - exp(linpred)))
+      
+      
+      return(value_strate)
     }
     
-    # Label creation
-    if (m == 0) {
-      for (i in timevarnames) assign(paste0("gamma_names", i), NULL)
-    } else {
-      for (i in timevarnames) assign(paste0("gamma_names", i), paste0("gamma", i, "_", 2:(m + 1)))
-    }
-    
-    label <- covnames
-    label <- c(label, paste0("gamma0_", 0:(m + 1)))  # Add baseline gamma names
-    for (i in timevarnames) {
-      label <- c(label, paste0("gamma", i, "_0"), paste0("gamma", i, "_1"), get(paste0("gamma_names", i)))
+    label <- c()
+    for (k in seq_along(K)) {
+      label <- c(label,
+                 paste0(covnames, "_", k),
+                 paste0("gamma", K[k], "_", 0:(m + 1)))
     }
     
     # Parameter initialization
-    n_beta <- dim(cova)[2]
-    n_gamma0 <- m + 2
+    n_beta <- length(K) *dim(cova)[2]
     n_gammak <- length(K) * (m + 2)
     
     if (!is.null(init)) {
-      if (length(init) != n_beta + n_gamma0 + n_gammak)
-        stop("'init' length must be ", n_beta + n_gamma0 + n_gammak, " (",
-             n_beta, " covariate(s), ", n_gamma0, " baseline gamma, ",
-             " and ", n_gammak, " time-dependent spline parameters).")
+      if (length(init) != n_beta + n_gammak)
+        stop("'init' length must be ", n_beta + n_gammak, " (",
+             n_beta, " covariate(s), ", dim(cova)[2]," per level of the time-dependant covariate and ", n_gammak, " splines parameters, ", m+2," per level of the time-dependant covariate).")
       init1 <- init
     } else {
-      init1 <- rep(0, n_beta + n_gamma0 + n_gammak)
-    }
-    loglik2 <- function(par, time, event, cova, covatime, hP, w, m, mpos, mquant, K) {
-      beta <- par[1:n_beta]
-      gamma0 <- par[(n_beta + 1):(n_beta + n_gamma0)]
-      gamma <- matrix(par[(n_beta + n_gamma0 + 1):length(par)], ncol = length(K))
-      
-      logll2(beta, gamma0, gamma, time, event, cova, covatime, hP, w, m, mpos, mquant, K)
+      init1 <- rep(0, n_beta +  n_gammak)
     }
     
-    # Optimization
-    suppressWarnings({
-      logllmax1 <- optim(par = init1, fn = loglik2, time = time, event = event,
-                         cova = cova, covatime = timevarnum, hP = hP, w = weights,
-                         m = m, mpos = mpos, mquant = mquant, K = K)
+    loglik2 <- function(par, time, event, cova, covatime, hP, w, m, mpos, mquant, kn) {
+      beta <- par[1:dim(cova)[2]]
+      gamma <- par[(dim(cova)[2] + 1):length(par)]
       
-      indic <- 0
-      while (indic <= 5) {
-        last_logllmax1 <- logllmax1
-        ll_val <- logllmax1$value
-        
-        logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, event = event,
+      logll2(beta, gamma, time, event, cova, covatime, hP, w, m, mpos, mquant, kn)
+    }
+    
+    
+    init1 <- matrix(init1, nrow = dim(cova)[2]+m+2)
+    results_ll <-list()
+    for(k in K){
+      
+      suppressWarnings({
+        logllmax1 <- optim(par = init1[,k], fn = loglik2, time = time, event = event,
                            cova = cova, covatime = timevarnum, hP = hP, w = weights,
-                           m = m, mpos = mpos, mquant = mquant, K = K)
+                           m = m, mpos = mpos, mquant = mquant, kn = K[k])
         
-        delta <- ll_val - logllmax1$value
-        if (delta_th == 0) {
-          if (delta == delta_th) indic <- indic + 1
-        } else {
-          if (0 < delta & delta <= delta_th) indic <- indic + 1
+        indic <- 0
+        while (indic <= 5) {
+          last_logllmax1 <- logllmax1
+          ll_val <- logllmax1$value
+          
+          logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, event = event,
+                             cova = cova, covatime = timevarnum, hP = hP, w = weights,
+                             m = m, mpos = mpos, mquant = mquant, kn = K[k])
+          
+          delta <- ll_val - logllmax1$value
+          if (delta_th == 0) {
+            if (delta == delta_th) indic <- indic + 1
+          } else {
+            if (0 < delta & delta <= delta_th) indic <- indic + 1
+          }
         }
-      }
-      
-      tryCatch({
-        logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, event = event,
-                           cova = cova, covatime = timevarnum, hP = hP, w = weights,
-                           m = m, mpos = mpos, mquant = mquant, K = K,
-                           hessian = TRUE)
-      }, error = function(e) {
-        logllmax1 <- last_logllmax1
+        
+        tryCatch({
+          logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, event = event,
+                             cova = cova, covatime = timevarnum, hP = hP, w = weights,
+                             m = m, mpos = mpos, mquant = mquant, kn = K[k],
+                             hessian = TRUE)
+        }, error = function(e) {
+          logllmax1 <- last_logllmax1
+        })
       })
-    })
-    
+      results_ll[[k]] <- logllmax1
+    }
   }
   
   if (is.null(covnames) & !is.null(timevar)){
@@ -267,101 +260,90 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     timevarnum <- as.numeric(correstab[as.character(timevar)])
     K = sort(unique(timevarnum))
     
-    logll3 <- function(gamma0, gamma, time, event, covatime, hP, w, m, mpos, mquant, K){
+    logll3 <- function(gamma, time, event, covatime, hP, w, m, mpos, mquant, k){
       
-      splbase <- splinecube(time, gamma0, m, mpos, mquant)$spln
-      splbaseP <- splinecubeP(time, gamma0, m, mpos, mquant)$spln
+      gammak <- gamma
+      idx <- covatime == k
       
-      value = 0
-      for(k in K){
-        gammak <- gamma[,k] 
-        
-        idx <- covatime == k
-        
-        timek <- time[idx]
-        eventk <- event[idx]
-        hPk <- hP[idx]
-        covak <- cova[idx, , drop = FALSE]
-        wk <- w[idx]
-        
-        splk <- splinecube(timek, gammak, m, mpos, mquant)$spln
-        splkP <- splinecubeP(timek, gammak, m, mpos, mquant)$spln
-        linpred <- splbase[idx] + splk 
-        
-        value_strate <- -1*sum(wk * (eventk * log(hPk + (1/timek)* (splbaseP[idx] + splkP) *
-                                                    exp(linpred ) ) - exp(linpred)
-        )
-        )
-        value <- value +value_strate
-      }
-      return(value)
+      timek <- time[idx]
+      eventk <- event[idx]
+      hPk <- hP[idx]
+      covak <- cova[idx, , drop = FALSE]
+      wk <- w[idx]
+      
+      splk <- splinecube(timek, gammak, m, mpos, mquant)$spln
+      splkP <- splinecubeP(timek, gammak, m, mpos, mquant)$spln
+      linpred <- splk 
+      
+      value_strate <- -1*sum(wk * (eventk * log(hPk + (1/timek)* splkP *
+                                                  exp(linpred ) ) - exp(linpred)
+      )
+      )
+      return(value_strate)
+      
     }
     
-    if (m == 0) {
-      for (i in timevarnames) {
-        assign(paste0("gamma_names", i), NULL)
-      }
-    }else {
-      for (i in timevarnames) {
-        assign(paste0("gamma_names", i), paste0("gamma", i, "_", 2:(m+1)))
-      }
+    
+    label <- c()
+    for (k in seq_along(K)) {
+      label <- c(label, paste0("gamma", K[k], "_", 0:(m + 1)))
     }
     
-    label <- covnames
-    label <- c(label, paste0("gamma0_", 0:(m + 1)))
-    for (i in timevarnames) {
-      label <- c(label, paste0("gamma", i, "_0"), paste0("gamma", i, "_1"), get(paste0("gamma_names", i)))
-    }
     
     # Parameter initialization
-    n_beta <- dim(cova)[2]
-    n_gamma0 <- m + 2
     n_gammak <- length(K) * (m + 2)
     
     if (!is.null(init)) {
-      if (length(init) != n_beta + n_gamma0 + n_gammak)
-        stop("'init' length must be ", n_beta + n_gamma0 + n_gammak, " (",
-             n_beta, " covariate(s), ", n_gamma0, " baseline gamma, ",
-             " and ", n_gammak, " time-dependent spline parameters).")
+      if (length(init) != n_gammak)
+        stop("'init' length must be ",  n_gammak, " (",  n_gammak, " spline parameters per level of the time-dependent variable).")
       init1 <- init
     } else {
-      init1 <- rep(0, n_beta + n_gamma0 + n_gammak)
+      init1 <- rep(0, n_gammak)
     }
     
-    loglik3 <- function(par, time, event, covatime, hP, w, m, mpos, mquant, K){
+    loglik3 <- function(par, time, event, covatime, hP, w, m, mpos, mquant, kn){
       
-      gamma0 <- par[(n_beta + 1):(n_beta + n_gamma0)]
-      gamma <- matrix(par[(n_beta + n_gamma0 + 1):length(par)], ncol = length(K))
+      gamma <- par
       
-      return(logll3(gamma0, gamma, time, event, covatime, hP, w, m, mpos, mquant, K)) }
+      return(logll3(gamma, time, event, covatime, hP, w, m, mpos, mquant, kn)) }
     
-    suppressWarnings({
-      logllmax1 <- optim(par = init1, fn = loglik3, time = time, event = event,
-                         covatime = timevarnum, hP = hP, w = weights
-                         , m = m, mpos = mpos, mquant = mquant, K= K)
+    init1 <- matrix(init1, nrow = m+2)
+    results_ll <-list()
+    
+    for(k in K){
       
-      indic <- 0
-      while(indic <= 5){
-        last_logllmax1 <- logllmax1
-        ll_val <- logllmax1$value
-        logllmax1 <- optim(par = logllmax1$par, fn = loglik3, time = time, 
-                           event = event, covatime = timevarnum,
-                           hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant, K = K)
-        delta <- ll_val - logllmax1$value
-        if(delta_th == 0){
-          if(delta == delta_th) {indic = indic + 1}
-        }else{ 
-          if(0 < delta & delta <= delta_th) {indic = indic + 1}
-        }        }
+      suppressWarnings({
+        logllmax1 <- optim(par = init1[,k], fn = loglik3, time = time, event = event,
+                           covatime = timevarnum, hP = hP, w = weights
+                           , m = m, mpos = mpos, mquant = mquant, kn = K[k])
+        
+        indic <- 0
+        while(indic <= 5){
+          last_logllmax1 <- logllmax1
+          ll_val <- logllmax1$value
+          
+          logllmax1 <- optim(par = logllmax1$par, fn = loglik3, time = time, 
+                             event = event, covatime = timevarnum,
+                             hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant, kn = K[k])
+          delta <- ll_val - logllmax1$value
+          if(delta_th == 0){
+            if(delta == delta_th) {indic = indic + 1}
+          }else{ 
+            if(0 < delta & delta <= delta_th) {indic = indic + 1}
+          }        }
+        
+        tryCatch({logllmax1 <- optim(par = logllmax1$par, fn = loglik3, time = time, 
+                                     event = event, covatime = timevarnum,
+                                     hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant, kn = K[k],
+                                     hessian = TRUE)}
+                 , error = function(e){logllmax1 <- last_logllmax1})
+      })
       
-      tryCatch({logllmax1 <- optim(par = logllmax1$par, fn = loglik3, time = time, 
-                                   event = event, covatime = timevarnum,
-                                   hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant, K= K,
-                                   hessian = TRUE)}
-               , error = function(e){logllmax1 <- last_logllmax1})
-    })
+      results_ll[[k]] <- logllmax1
+      
+    }
+    ## end K loop
   }
-  
   
   #NULL model
   logll0 <- function(gamma, time, event, hP, w, m, mpos, mquant){
@@ -417,27 +399,77 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
   
   ##récupération de mpos et mquant si ils n'ont pas été spécifiés dans la formule.
   
-  if(is.null(mpos)){
-    if(is.null(mquant)){
-      a <- c()
-      for(i in (0:(m+1))){
-        a <- c(a,i/(m+1))}
-      mpos <- quantile(log(time), probs = a)
-      mpos <- as.numeric(mpos)
-      mquant <- a 
-    }else{
-      a <- c(mquant)
-      mpos <- quantile(log(time), probs = a)
+  if(is.null(timevar)){
+    if(is.null(mpos)){
+      if(is.null(mquant)){
+        a <- c()
+        for(i in (0:(m+1))){
+          a <- c(a,i/(m+1))}
+        mpos <- quantile(log(time), probs = a)
+        mpos <- as.numeric(mpos)
+        mquant <- a 
+      }else{
+        a <- c(mquant)
+        mpos <- quantile(log(time), probs = a)
+      }
     }
   }
-  
-  if (!is.null(covnames)){
+  if(!(is.null(timevar))){
+    if(is.null(mpos)){
+      if(is.null(mquant)){
+        a <- c()
+        for(i in (0:(m+1))){
+          a <- c(a,i/(m+1))}
+        mpos_strates <- c()
+        for(k in seq_along(K)){
+          idx <- timevarnum == k
+          timek <- time[idx]
+          
+          mpos_strates <- c(mpos_strates, quantile(log(timek), probs = a) )
+          mquant <- a 
+        }
+        mpos_strates <- as.numeric(mpos_strates)
+        mpos <- matrix(mpos_strates, nrow = length(K))
+        
+      }else{
+        a <- c(mquant)
+        mpos_strates <- c()
+        for(k in seq_along(K)){
+          idx <- timevarnum == k
+          timek <- time[idx]
+          
+          mpos_strates <- c(mpos_strates, quantile(log(timek), probs = a) )
+          mquant <- a 
+        }
+        mpos_strates <- as.numeric(mpos_strates)
+        mpos<- matrix(mpos_strates, nrow = length(K))
+      }
+    }
+  }
+  if (!is.null(covnames) & is.null(timevar)){
     
     t.table <- data.frame(coef = logllmax1$par,
                           ecoef = exp(logllmax1$par),
                           se = sqrt(diag(solve(logllmax1$hessian))),
                           z = logllmax1$par/sqrt(diag(solve(logllmax1$hessian))),
                           p = 2*(1-pnorm(abs(logllmax1$par/sqrt(diag(solve(logllmax1$hessian)))), 0, 1)),
+                          row.names = label)
+  }
+  
+  if (!is.null(covnames) & !is.null(timevar)){
+    
+    ret_par <- c()
+    sq_solve <- c()
+    for(i in 1:length(K)){
+      ret_par <- c(ret_par, results_ll[[i]]$par)
+      sq_solve <- c(sq_solve, sqrt(diag(solve(results_ll[[i]]$hessian) )))
+    }
+    
+    t.table <- data.frame(coef = ret_par,
+                          ecoef = exp(ret_par),
+                          se = sq_solve,
+                          z = ret_par/sq_solve,
+                          p = 2*(1-pnorm(abs(ret_par/sq_solve), 0, 1)),
                           row.names = label)
   }
   
@@ -451,11 +483,19 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
   }
   
   if(is.null(covnames) & !is.null(timevar)){
-    t.table <- data.frame(coef = logllmax1$par,
-                          ecoef = exp(logllmax1$par),
-                          se = sqrt(diag(solve(logllmax1$hessian))),
-                          z = logllmax1$par/sqrt(diag(solve(logllmax1$hessian))),
-                          p = 2*(1-pnorm(abs(logllmax1$par/sqrt(diag(solve(logllmax1$hessian)))), 0, 1)),
+    
+    ret_par <- c()
+    sq_solve <- c()
+    for(i in 1:length(K)){
+      ret_par <- c(ret_par, results_ll[[i]]$par)
+      sq_solve <- c(sq_solve, sqrt(diag(solve(results_ll[[i]]$hessian) )))
+    }
+    
+    t.table <- data.frame(coef = ret_par,
+                          ecoef = exp(ret_par),
+                          se = sq_solve,
+                          z = ret_par/sq_solve,
+                          p = 2*(1-pnorm(abs(ret_par/sq_solve), 0, 1)),
                           row.names = label)
   }
   
@@ -464,16 +504,82 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
   coefficients <- t.table$coef
   names(coefficients) <- label
   
-  betaestim <- coefficients[covnames]
-  lp <- cova %*% betaestim
+  if(is.null(timevar)){
+    betaestim <- coefficients[covnames]
+    lp <- cova %*% betaestim
+  }
+  
+  if(!is.null(timevar)){
+    if(!is.null(covnames)){
+      pattern <- paste(covnames, collapse = "|")  
+      betaestim <- coefficients[grep(pattern, names(coefficients))]
+      
+      lp <- numeric(nrow(cova))
+      
+      for (k in K) {
+        idx <- which(timevarnum == k)
+        
+        coefnames_k <- paste0(covnames, "_", k)
+        
+        betak <- betaestim[coefnames_k]
+        
+        covak <- as.matrix(cova[idx, covnames, drop = FALSE])
+        
+        lp[idx] <- covak %*% betak
+      }
+      
+    }
+    if(is.null(covnames)){
+      lp <- NA
+    }
+  }
   
   dimnames(cova)[[2]] <- covnames
   
-  var <- if(!is.null(covnames) || (is.null(covnames) & !is.null(timevar)) ){solve(logllmax1$hessian)
+  var <- if(!is.null(covnames) & is.null(timevar)){solve(logllmax1$hessian)
+  } else if(!is.null(covnames) & !is.null(timevar)){
+    res_solve <- list()
+    
+    for(i in 1:length(K)){
+      res_solve[[i]] <- solve(results_ll[[i]]$hessian) 
+    }
+    res_solve
+  }else if(is.null(covnames) & !is.null(timevar)) { 
+    
+    res_solve <- list()
+    
+    for(i in 1:length(K)){
+      res_solve[[i]] <- solve(results_ll[[i]]$hessian) 
+    }
+    res_solve
+    
   }else{solve(logllmax0$hessian)}
-  loglik <- if(!is.null(covnames) || (is.null(covnames) & !is.null(timevar)) ){c(-1*logllmax1$value, -1*logllmax0$value)
+  
+  
+  loglik <- if(!is.null(covnames) & is.null(timevar) ){c(-1*logllmax1$value, -1*logllmax0$value)
+  }else if(!is.null(covnames) & !is.null(timevar)){ 
+    res_log <- c()
+    
+    for(i in 1:length(K)){
+      res_log <- c(res_log, results_ll[[i]]$value) 
+    }
+    res_log <- c(-1*sum(res_log), -1*logllmax0$value, -1*res_log)
+    
+  }else if(is.null(covnames) & !is.null(timevar)){  
+    res_log <- c()
+    
+    for(i in 1:length(K)){
+      res_log <- c(res_log, results_ll[[i]]$value) 
+    }
+    res_log <- c(-1*sum(res_log), -1*logllmax0$value, -1*res_log)
   }else{-1*logllmax0$value}
-  if(length(loglik)==2){names(loglik) <- c("Model", "Null model")}else{
+  
+  if(!is.null(covnames) & is.null(timevar)){names(loglik) <- c("Model", "Null model")
+  }else if(!is.null(covnames) & !is.null(timevar)){ names(loglik) <- c("Model", "Null Model", paste0("Model_", timevarnames))
+  
+  }else if(is.null(covnames) & !is.null(timevar)){ names(loglik) <- c("Model", "Null Model", paste0("Model_", timevarnames))
+  
+  }else{
     names(loglik) <- c("Null Model")
   }
   
@@ -502,4 +608,5 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
   class(res) <- "survivalNET"
   return(res)
 }
+
 
