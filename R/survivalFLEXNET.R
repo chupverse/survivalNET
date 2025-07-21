@@ -429,7 +429,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
           mquant <- a 
         }
         mpos_strates <- as.numeric(mpos_strates)
-        mpos <- matrix(mpos_strates, nrow = length(K))
+        mpos <- t(matrix(mpos_strates, ncol = m+2, byrow = TRUE))
         
       }else{
         a <- c(mquant)
