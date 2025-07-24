@@ -555,11 +555,15 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", init = NULL, d
   
   if (!is.null(covnames)){
     
+    diag_mat <- tryCatch({diag(solve(logllmax1$hessian))}, error = function(e) { 
+      warning("Hessian inversion failed: ", conditionMessage(e))
+      return(NA)})
+    
     t.table <- data.frame(coef = logllmax1$par,
                           ecoef = exp(logllmax1$par),
-                          se = sqrt(diag(solve(logllmax1$hessian))),
-                          z = logllmax1$par/sqrt(diag(solve(logllmax1$hessian))),
-                          p = 2*(1-pnorm(abs(logllmax1$par/sqrt(diag(solve(logllmax1$hessian)))), 0, 1)),
+                          se = sqrt(diag_mat),
+                          z = logllmax1$par/sqrt(diag_mat),
+                          p = 2*(1-pnorm(abs(logllmax1$par/sqrt(diag_mat)), 0, 1)),
                           row.names = label)
   }
   
@@ -590,11 +594,15 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", init = NULL, d
   
   if(is.null(covnames) & !is.null(timevar)){
     
+    diag_mat <- tryCatch({diag(solve(logllmax1$hessian))}, error = function(e) { 
+      warning("Hessian inversion failed: ", conditionMessage(e))
+      return(NA)})
+    
     t.table <- data.frame(coef = logllmax1$par,
                           ecoef = exp(logllmax1$par),
-                          se = sqrt(diag(solve(logllmax1$hessian))),
-                          z = logllmax1$par/sqrt(diag(solve(logllmax1$hessian))),
-                          p = 2*(1-pnorm(abs(logllmax1$par/sqrt(diag(solve(logllmax1$hessian)))), 0, 1)),
+                          se = sqrt(diag_mat),
+                          z = logllmax1$par/sqrt(diag_mat),
+                          p = 2*(1-pnorm(abs(logllmax1$par/sqrt(diag_mat)), 0, 1)),
                           row.names = label)
   }
   
@@ -608,7 +616,8 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", init = NULL, d
   
   dimnames(cova)[[2]] <- covnames
   
-  var <- if(!is.null(covnames) || (is.null(covnames) & !is.null(timevar)) ){solve(logllmax1$hessian)
+  solve_mat <- tryCatch({solve(logllmax1$hessian)}, error = function(e) {return(NA)})
+  var <- if(!is.null(covnames) || (is.null(covnames) & !is.null(timevar)) ){solve_mat
   }else{if(dist !="exponential"){solve(logllmax0$hessian)}else{se_fun(par = logllmax0$par, time =time, event= event, hP= hP, w = weights)^2}  }
   loglik <- if (!is.null(covnames) || (is.null(covnames) & !is.null(timevar)) ){c(-1*logllmax1$value, -1*logllmax0$value)
   }else{-1*logllmax0$value}
