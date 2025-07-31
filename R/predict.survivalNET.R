@@ -337,9 +337,9 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
         timevarnum <- as.numeric(correstab[timevar]) 
         covariates[,dim(covariates)[2]] <- timevarnum
         covariates <- data.frame(lapply(covariates, as.numeric))
-        K <- unique(timevarnum)
+        K <- length(correstab)
         
-        gammas <- matrix(object$coefficients[(dim(object$x)[2]+1):(dim(object$x)[2]+ length(K)*(object$m+2))],
+        gammas <- matrix(object$coefficients[(dim(object$x)[2]+1):(dim(object$x)[2]+ K*(object$m+2))],
                          ncol = length(object$xlevels[[1]]))
         
         ##avec covariables
