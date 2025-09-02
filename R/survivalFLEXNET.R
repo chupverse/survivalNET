@@ -1,6 +1,6 @@
 
 survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant = NULL, init = NULL, 
-                             delta_th = 0, weights=NULL)
+                            delta_th = 0, weights=NULL, m_s = NULL, mpos_s = NULL, mquant_s = NULL, Kref = NULL)
 {
   
   ####### check errors
@@ -165,12 +165,24 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     timevarnum <- as.numeric(correstab[as.character(timevar)])
     K <- sort(unique(timevarnum))
     
-    logll2 <- function(beta, gamma, time, event, cova, covatime, hP, w, m, mpos, mquant, K) {
-      
+    if(!is.null(Kref)){
+      if(!(Kref %in% timevarnames))stop("'Kref' must be a value present in your time-stratified covariate.") 
+      Kref_hold <- Kref
+      Kref <- unname(correstab[Kref])
+    }
+    
+    if(is.null(Kref)){
+      Kref <- max(K)
+      Kref_hold <- Kref
+    }
+    
+    nonref <- sort(setdiff(K, Kref))  
+    
+    logll2 <- function(beta, gamma_base, gamma_strata, time, event, cova, covatime, hP, w, m, mpos, mquant, K) {
       
       value <- 0
+      
       for (k in K) {
-        gammak <- gamma[, k]
         idx <- covatime == k
         
         timek <- time[idx]
@@ -179,46 +191,78 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
         covak <- cova[idx, , drop = FALSE]
         wk <- w[idx]
         
-        splk <- splinecube(timek, gammak, m, mpos, mquant)$spln
-        splkP <- splinecubeP(timek, gammak, m, mpos, mquant)$spln
-        linpred <- splk + as.matrix(covak) %*% beta
+        # baseline spline
+        spl_base  <- splinecube(timek, gamma_base, m, mpos, mquant)$spln
+        spl_baseP <- splinecubeP(timek, gamma_base, m, mpos, mquant)$spln
         
-        value_strate <- -1 * sum(wk * (eventk * log(hPk + (1 / timek) *  splkP * exp(linpred)) - exp(linpred)))
-        value <- value + value_strate
+        # stratum-specific spline only if not reference
+        if (k != Kref) {
+          col_idx <- which(nonref == k)
+          gammak <- gamma_strata[, col_idx]  
+          splk  <- splinecube(timek, gammak, m_s, mpos_s, mquant_s)$spln
+          splkP <- splinecubeP(timek, gammak, m_s, mpos_s, mquant_s)$spln
+        } else {
+          splk <- 0
+          splkP <- 0
+        }
+        
+        linpred <- spl_base + splk + covak %*% beta
+        
+        value_k <- -1 * sum(wk * (
+          eventk * log(hPk + (1/timek) * (spl_baseP + splkP) * exp(linpred))) -
+            exp(linpred))
+        
+        value <- value + value_k
       }
       return(value)
     }
     
-    # Label creation
+    label <- covnames
+    
     if (m == 0) {
-      for (i in timevarnames) assign(paste0("gamma_names", i), NULL)
+      gamma0_names <- c("gamma0_0", "gamma0_1")
     } else {
-      for (i in timevarnames) assign(paste0("gamma_names", i), paste0("gamma", i, "_", 2:(m + 1)))
+      gamma0_names <- c("gamma0_0", "gamma0_1", paste0("gamma0_", 2:(m+1)))
     }
     
-    label <- covnames
-    for (i in timevarnames) {
-      label <- c(label, paste0("gamma", i, "_0"), paste0("gamma", i, "_1"), get(paste0("gamma_names", i)))
+    for (i in setdiff(timevarnames, Kref)) {
+      if (m_s == 0) {
+        assign(paste0("gamma_names_", i),
+               c(paste0("gamma", i, "_0"), paste0("gamma", i, "_1")))
+      } else {
+        assign(paste0("gamma_names_", i),
+               c(paste0("gamma", i, "_0"), paste0("gamma", i, "_1"),
+                 paste0("gamma", i, "_", 2:(m_s+1))))
+      }
+    }
+    
+    
+    label <- c(covnames, gamma0_names)
+    for (i in setdiff(timevarnames, Kref)) {
+      label <- c(label, get(paste0("gamma_names_", i)))
     }
     
     # Parameter initialization
     n_beta <- dim(cova)[2]
-    n_gammak <- length(K) * (m + 2)
+    n_gamma_base <- m +2 
+    n_gammak <- (length(K)-1) * (m_s + 2)   
     
     if (!is.null(init)) {
-      if (length(init) != n_beta  + n_gammak)
-        stop("'init' length must be ", n_beta  + n_gammak, " (",
-             n_beta, " covariate(s), baseline gamma, ",
-             " and ", n_gammak, " time-dependent spline parameters).")
+      if (length(init) != n_beta  + n_gammak + n_gamma_base)
+        stop("'init' length must be ", n_beta + n_gamma_base + n_gammak, " (",
+             n_beta, " covariate(s), ", n_gamma_base, " baseline spline parameters and ",
+             n_gammak, " time-dependent spline parameters).")
       init1 <- init
     } else {
-      init1 <- rep(0, n_beta  + n_gammak)
+      init1 <- rep(0, n_beta  + n_gammak + n_gamma_base)
     }
     loglik2 <- function(par, time, event, cova, covatime, hP, w, m, mpos, mquant, K) {
-      beta <- par[1:n_beta]
-      gamma <- matrix(par[(n_beta + 1):length(par)], ncol = length(K))
-      
-      logll2(beta, gamma, time, event, cova, covatime, hP, w, m, mpos, mquant, K)
+      beta  <- par[1:n_beta]
+      gamma_base <- par[(n_beta+1):(n_beta+n_gamma_base)]
+      gamma_strata <- matrix(par[(n_beta+n_gamma_base+1):length(par)],
+                             ncol = length(K)-1)   # exclude reference
+      logll2(beta, gamma_base, gamma_strata, time, event, cova, covatime,
+             hP, w, m, mpos, mquant, K)
     }
     
     # Optimization
@@ -263,14 +307,24 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     timevarnum <- as.numeric(correstab[as.character(timevar)])
     K = sort(unique(timevarnum))
     
-    logll3 <- function(gamma0, gamma, time, event, covatime, hP, w, m, mpos, mquant, K){
+    if(!is.null(Kref)){
+      if(!(Kref %in% timevarnames))stop("'Kref' must be a value present in your time-stratified covariate.") 
+      Kref_hold <- Kref
+      Kref <- unname(correstab[Kref])
+    }
+    
+    if(is.null(Kref)){
+      Kref <- max(K)
+      Kref_hold <- Kref
+    }
+    
+    nonref <- sort(setdiff(K, Kref))  
+    
+    logll3 <- function(gamma_base, gamma_strata, time, event, covatime, hP, w, m, mpos, mquant, K){
       
-      splbase <- splinecube(time, gamma0, m, mpos, mquant)$spln
-      splbaseP <- splinecubeP(time, gamma0, m, mpos, mquant)$spln
+      value <- 0
       
-      value = 0
       for(k in K){
-        gammak <- gamma[,k] 
         
         idx <- covatime == k
         
@@ -280,56 +334,74 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
         covak <- cova[idx, , drop = FALSE]
         wk <- w[idx]
         
-        splk <- splinecube(timek, gammak, m, mpos, mquant)$spln
-        splkP <- splinecubeP(timek, gammak, m, mpos, mquant)$spln
-        linpred <- splbase[idx] + splk 
+        spl_base  <- splinecube(timek, gamma_base, m, mpos, mquant)$spln
+        spl_baseP <- splinecubeP(timek, gamma_base, m, mpos, mquant)$spln
         
-        value_strate <- -1*sum(wk * (eventk * log(hPk + (1/timek)* (splbaseP[idx] + splkP) *
-                                                    exp(linpred ) ) - exp(linpred)
-        )
-        )
-        value <- value +value_strate
+        if (k != Kref) {
+          col_idx <- which(nonref == k)
+          gammak <- gamma_strata[, col_idx]  
+          splk  <- splinecube(timek, gammak, m_s, mpos_s, mquant_s)$spln
+          splkP <- splinecubeP(timek, gammak, m_s, mpos_s, mquant_s)$spln
+        } else {
+          splk <- 0
+          splkP <- 0
+        }
+        
+        linpred <- spl_base + splk 
+        
+        value_k <- -1 * sum(wk * (
+          eventk * log(hPk + (1/timek) * (spl_baseP + splkP) * exp(linpred))) -
+            exp(linpred))
+        
+        value <- value + value_k
       }
       return(value)
     }
     
     if (m == 0) {
-      for (i in timevarnames) {
-        assign(paste0("gamma_names", i), NULL)
-      }
-    }else {
-      for (i in timevarnames) {
-        assign(paste0("gamma_names", i), paste0("gamma", i, "_", 2:(m+1)))
+      gamma0_names <- c("gamma0_0", "gamma0_1")
+    } else {
+      gamma0_names <- c("gamma0_0", "gamma0_1", paste0("gamma0_", 2:(m+1)))
+    }
+    
+    for (i in setdiff(timevarnames, Kref)) {
+      if (m_s == 0) {
+        assign(paste0("gamma_names_", i),
+               c(paste0("gamma", i, "_0"), paste0("gamma", i, "_1")))
+      } else {
+        assign(paste0("gamma_names_", i),
+               c(paste0("gamma", i, "_0"), paste0("gamma", i, "_1"),
+                 paste0("gamma", i, "_", 2:(m_s+1))))
       }
     }
     
-    label <- covnames
-    label <- c(label, paste0("gamma0_", 0:(m + 1)))
-    for (i in timevarnames) {
-      label <- c(label, paste0("gamma", i, "_0"), paste0("gamma", i, "_1"), get(paste0("gamma_names", i)))
+    label <- c(covnames, gamma0_names)
+    for (i in setdiff(timevarnames, Kref)) {
+      label <- c(label, get(paste0("gamma_names_", i)))
     }
     
     # Parameter initialization
     n_beta <- dim(cova)[2]
-    n_gamma0 <- m + 2
-    n_gammak <- length(K) * (m + 2)
+    n_gamma_base <- m +2 
+    n_gammak <- (length(K)-1) * (m_s + 2)   
     
     if (!is.null(init)) {
-      if (length(init) != n_beta + n_gamma0 + n_gammak)
-        stop("'init' length must be ", n_beta + n_gamma0 + n_gammak, " (",
-             n_beta, " covariate(s), ", n_gamma0, " baseline gamma, ",
-             " and ", n_gammak, " time-dependent spline parameters).")
+      if (length(init) != n_beta  + n_gammak + n_gamma_base)
+        stop("'init' length must be ", n_beta + n_gamma_base + n_gammak, " (",
+             n_beta, " covariate(s), ", n_gamma_base, " baseline spline parameters and ",
+             n_gammak, " time-dependent spline parameters).")
       init1 <- init
     } else {
-      init1 <- rep(0, n_beta + n_gamma0 + n_gammak)
+      init1 <- rep(0, n_beta + n_gamma_base + n_gammak)
     }
     
     loglik3 <- function(par, time, event, covatime, hP, w, m, mpos, mquant, K){
       
-      gamma0 <- par[(n_beta + 1):(n_beta + n_gamma0)]
-      gamma <- matrix(par[(n_beta + n_gamma0 + 1):length(par)], ncol = length(K))
+      gamma_base <- par[(n_beta+1):(n_beta+n_gamma_base)]
+      gamma_strata <- matrix(par[(n_beta+n_gamma_base+1):length(par)],
+                             ncol = length(K)-1)
       
-      return(logll3(gamma0, gamma, time, event, covatime, hP, w, m, mpos, mquant, K)) }
+      return(logll3(gamma_base, gamma_strata, time, event, covatime, hP, w, m, mpos, mquant, K)) }
     
     suppressWarnings({
       logllmax1 <- optim(par = init1, fn = loglik3, time = time, event = event,
@@ -357,7 +429,6 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
                , error = function(e){logllmax1 <- last_logllmax1})
     })
   }
-  
   
   #NULL model
   logll0 <- function(gamma, time, event, hP, w, m, mpos, mquant){
@@ -491,6 +562,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     var = var,
     t.table = t.table,
     loglik = loglik,
+    optim_res = logllmax1,
     linear.predictors = as.vector(lp),
     missing = !na,
     n = length(time),
@@ -506,6 +578,11 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     res$correstab <- correstab
     res$xlevels <- xlevels
     res$levelsval <- data[,strata_var]
+    res$m_s <- m_s
+    res$mpos_s <- mpos_s
+    res$mquant_s <- mquant_s
+    res$Kref <- Kref_hold
+    res$Kref_num <- Kref
   }
   class(res) <- "survivalNET"
   return(res)

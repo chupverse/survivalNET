@@ -116,6 +116,10 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
     gamma <- unname( object$coefficients[(dim(object$x)[2]+1):(dim(object$t.table)[1])] ) 
     m <- object$m
     mpos <- object$mpos
+    if("m_s" %in% names(object)){
+      m_s <- object$m_s
+      mpos_s <- object$mpos_s
+    }
   }
   
   ### type 
@@ -214,13 +218,25 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
         ##avec covariables
         if(dim(object$x)[2] != 0){
           
-          flex_net_strata_cov <- function(x, covariates, gammas) {
+          flex_net_strata_cov <- function(x, covariates, gamma, gammas) {
             n <- dim(covariates)[1]
             timpos <- dim(covariates)[2]
             timeval <- covariates[, timpos] 
             
-            splnvalues_list <- lapply(unique(timeval), function(tv) 
-              splinecube(x, gammas[, tv], m, mpos)$spln)
+            spln <- splinecube(x, gamma, m, mpos)$spln
+            
+            Kref <- object$Kref_num
+            nonref <- sort(setdiff(object$correstab, Kref))
+            ref_map <- setNames(seq_along(nonref), nonref)
+            
+            splnvalues_list <- lapply(unique(timeval), function(tv) {
+              if (tv == Kref) {
+                rep(0, length(x)) 
+              } else {
+                col_idx <- ref_map[as.character(tv)]
+                splinecube(x, gammas[, col_idx], m_s, mpos_s)$spln
+              }
+            })
             
             splnvalues_map <- setNames(splnvalues_list, unique(timeval))
             
@@ -229,7 +245,14 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
             linpred <- covariates_matrix %*% beta
             
             # Compute survival estimates using vectorized operations
-            splnvalues <- t(sapply(timeval, function(tv) splnvalues_map[[as.character(tv)]]))
+            splnvalues <- t(sapply(seq_along(timeval), function(i) {
+              tv <- timeval[i]
+              if (tv %in% names(splnvalues_map)) {
+                spln + splnvalues_map[[as.character(tv)]]
+              } else {
+                spln   # reference stratum → only baseline
+              }
+            }))
             sur <- exp(-exp(as.vector(linpred)) * exp(splnvalues))
             
             return(sur)
@@ -244,13 +267,32 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
             timpos <- dim(covariates)[2]
             timeval <- covariates[, timpos]  # Extract all time variable indices
             
-            splnvalues_list <- lapply(unique(timeval), function(tv) 
-              splinecube(x, gammas[, tv], m, mpos)$spln)
+            spln <- splinecube(x, gamma, m, mpos)$spln
+            
+            Kref <- object$Kref_num
+            nonref <- sort(setdiff(object$correstab, Kref))
+            ref_map <- setNames(seq_along(nonref), nonref)
+            
+            splnvalues_list <- lapply(unique(timeval), function(tv) {
+              if (tv == Kref) {
+                rep(0, length(x)) 
+              } else {
+                col_idx <- ref_map[as.character(tv)]
+                splinecube(x, gammas[, col_idx], m_s, mpos_s)$spln
+              }
+            })
             
             splnvalues_map <- setNames(splnvalues_list, unique(timeval))
             
             # Compute survival estimates using vectorized operations
-            splnvalues <- t(sapply(timeval, function(tv) splnvalues_map[[as.character(tv)]]))
+            splnvalues <- t(sapply(seq_along(timeval), function(i) {
+              tv <- timeval[i]
+              if (tv %in% names(splnvalues_map)) {
+                spln + splnvalues_map[[as.character(tv)]]
+              } else {
+                spln   # reference stratum → only baseline
+              }
+            }))
             sur <- exp(-1*exp(splnvalues))
             
             return(sur)
@@ -339,14 +381,15 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
         covariates <- data.frame(lapply(covariates, as.numeric))
         K <- length(correstab)
         
-        gammas <- matrix(object$coefficients[(dim(object$x)[2]+1):(dim(object$x)[2]+ K*(object$m+2))],
-                         ncol = length(object$xlevels[[1]]))
+        gamma <- object$coefficients[(dim(object$x)[2]+1):(dim(object$x)[2]+ (object$m+2))]
+        gammas <- matrix(object$coefficients[(dim(object$x)[2]+ (object$m+2)+1):length(object$coefficients)],
+                         ncol = length(object$xlevels[[1]])-1 )
         
         ##avec covariables
         if(dim(object$x)[2] != 0){
           
           predictions <- flex_net_strata_cov(newtimes, covariates = 
-                                               covariates, gammas = gammas)
+                                               covariates, gamma = gamma, gammas = gammas)
         }
         
         ##sans covariables
