@@ -500,18 +500,19 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
   }
   
   ## same for mpos_s
-  
-  if(is.null(mpos_s)){
-    if(is.null(mquant_s)){
-      a <- c()
-      for(i in (0:(m_s+1))){
-        a <- c(a,i/(m_s+1))}
-      mpos_s <- quantile(log(time), probs = a)
-      mpos_s <- as.numeric(mpos_s)
-      mquant_s <- a 
-    }else{
-      a <- c(mquant_s)
-      mpos_s <- quantile(log(time), probs = a)
+  if (!is.null(xlevels)) {
+    if(is.null(mpos_s)){
+      if(is.null(mquant_s)){
+        a <- c()
+        for(i in (0:(m_s+1))){
+          a <- c(a,i/(m_s+1))}
+        mpos_s <- quantile(log(time), probs = a)
+        mpos_s <- as.numeric(mpos_s)
+        mquant_s <- a 
+      }else{
+        a <- c(mquant_s)
+        mpos_s <- quantile(log(time), probs = a)
+      }
     }
   }
   
