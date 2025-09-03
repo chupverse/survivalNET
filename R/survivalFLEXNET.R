@@ -64,6 +64,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     xlevels = NULL
   }
   if(!is.null(strata_var)){
+    if(is.null(m_s))stop("The number of internal knots 'm_s' for the stratifed splines needs to be specified")
     timevar <- data[,strata_var]
     xlevels <- list(levels(as.factor(timevar)))
     names(xlevels) <- c(strata_var)
@@ -495,6 +496,22 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     }else{
       a <- c(mquant)
       mpos <- quantile(log(time), probs = a)
+    }
+  }
+  
+  ## same for mpos_s
+  
+  if(is.null(mpos_s)){
+    if(is.null(mquant_s)){
+      a <- c()
+      for(i in (0:(m_s+1))){
+        a <- c(a,i/(m_s+1))}
+      mpos_s <- quantile(log(time), probs = a)
+      mpos_s <- as.numeric(mpos_s)
+      mquant_s <- a 
+    }else{
+      a <- c(mquant_s)
+      mpos_s <- quantile(log(time), probs = a)
     }
   }
   
