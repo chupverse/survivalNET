@@ -1,7 +1,7 @@
 
 cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10, 
                       m = 2, mpos = NULL, mquant = NULL, init = NULL, delta_th = 0,
-                      weights = NULL, m_s = NULL, Kref = NULL, metric = "ci"){
+                      weights = NULL, m_s = NULL, Kref = NULL, metric = "ibs"){
   ####### check errors
   if (missing(formula)) stop("a formula argument is required")
   if (missing(data)) stop("a data argument is required")
