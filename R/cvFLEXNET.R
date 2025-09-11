@@ -1,7 +1,7 @@
 
 cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10, 
                       m = 2, mpos = NULL, mquant = NULL, init = NULL, delta_th = 0,
-                      weights = NULL){
+                      weights = NULL, m_s = NULL, Kref = NULL, metric = "ibs"){
   ####### check errors
   if (missing(formula)) stop("a formula argument is required")
   if (missing(data)) stop("a data argument is required")
@@ -111,6 +111,7 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
     xlevels = NULL
   }
   if(!is.null(strata_var)){
+    if(is.null(m_s))stop("The number of internal knots 'm_s' for the stratifed splines needs to be specified")
     timevar <- data[,strata_var]
     xlevels <- list(levels(as.factor(timevar)))
     names(xlevels) <- c(strata_var)
@@ -143,12 +144,19 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
   
   .time <- sort(unique(data.net[,times]))
   
+  if(is.null(m_s)){
   if(is.null(mpos) && is.null(mquant)){
     .grid <-  expand.grid(m = m)}else if(!is.null(mpos)){
       .grid <- expand.grid(m = m, mpos  = mpos)}else{
         .grid <- expand.grid(m = m, mquant  = mquant)
       }
-    
+  }else{
+    if(is.null(mpos) && is.null(mquant)){
+      .grid <-  expand.grid(m = m, m_s = m_s)}else if(!is.null(mpos)){
+        .grid <- expand.grid(m = m, mpos  = mpos, m_s = m_s)}else{
+          .grid <- expand.grid(m = m, mquant  = mquant, m_s = m_s)
+        }
+  } 
   
   if(!is.null(init)){
     correstab <- data.frame(
@@ -184,7 +192,9 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
       m = xx$grid$m
       knots = NULL
       quant = unlist(xx$grid$mquant) }
-    
+    if(!is.null(m_s)){
+      m_s <- xx$grid$m_s
+    }
     init = unlist(xx$init)
     
     data=xx$train
@@ -202,7 +212,7 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
     
     .net <- survivalFLEXNET(.f, data = .data,
                             m = m, mpos = knots, mquant = quant, ratetable = ratetable, init = init,
-                            delta_th = delta_th, weights = weights)
+                            delta_th = delta_th, weights = weights, m_s = m_s, Kref = Kref)
     
     .time<-sort(unique(.data[,times]))
     
@@ -247,30 +257,42 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
     return(metrics(formula = .predformula, prediction.matrix =
                      as.matrix(as.data.frame(prediction.matrix)),
                    data=data, prediction.times=prediction.times,
-                   pro.time=pro.time, metric="ci"))
+                   pro.time=pro.time, metric= metric))
   }
   
   .measure<-sapply(.FitCV, net.best.measure, formula = formula , data=data.net, prediction.times=.time)
   
   
-  
-  if(is.null(mpos) && is.null(mquant)){
-    .res <- data.frame(m = .grid[,1], measure = .measure)
-  }else if(!is.null(mpos)){
-    .res <- data.frame(m = .grid[,1], mpos = as.character(.grid[,2]), measure = .measure)
-  }else{
+  if(is.null(m_s)){
+    if(is.null(mpos) && is.null(mquant)){
+      .res <- data.frame(m = .grid[,1], measure = .measure)
+    }else if(!is.null(mpos)){
+      .res <- data.frame(m = .grid[,1], mpos = as.character(.grid[,2]), measure = .measure)
+    }else{
     .res <- data.frame(m = .grid[,1], mquant = as.character(.grid[,2]), measure = .measure)
+    }
+  }else{
+    if(is.null(mpos) && is.null(mquant)){
+      .res <- data.frame(m = .grid[,1], m_s = .grid[,2], measure = .measure)
+    }else if(!is.null(mpos)){
+      .res <- data.frame(m = .grid[,1], mpos = as.character(.grid[,2]), m_s = .grid[,3], measure = .measure)
+    }else{
+      .res <- data.frame(m = .grid[,1], mquant = as.character(.grid[,2]), m_s = .grid[,3], measure = .measure)
+    }
   }
-  
   .maxi<-.res[which(.res$measure==max(.res$measure, na.rm=TRUE) & is.na(.res$measure)==FALSE),]
   .maxi<-.maxi[1,]
   maxi_mpos <- as.numeric(unlist(strsplit(sub("^[^\\(]+\\((.*)\\)$", "\\1",
                                               as.character(.maxi$mpos)), "," ))) 
   maxi_mquant <- as.numeric(unlist(strsplit(sub("^[^\\(]+\\((.*)\\)$", "\\1",
                                                 as.character(.maxi$mquant)), "," ))) 
-  return( list(optimal=list(m=.maxi$m,
-                            knots = maxi_mpos, quants = maxi_mquant
-  ),
-  results=.res ))
+  
+  res_list <- list(optimal=list(m=.maxi$m,
+                                knots = maxi_mpos, quants = maxi_mquant
+  ), results=.res )
+  if(!(is.null(m_s))){
+    res_list$optimal$m_s <- .maxi$m_s
+  }
+  return(res_list)
 }
 

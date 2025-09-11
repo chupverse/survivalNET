@@ -9,7 +9,7 @@ This function allows to compute a flexible regression with splines for modelling
 }
 \usage{
 survivalFLEXNET(formula, data, ratetable, m=3, mpos = NULL, mquant = NULL, init=NULL, delta_th=0,
-weights=NULL)
+weights=NULL, m_s = NULL, mpos_s = NULL, mquant_s = NULL, Kref = NULL)
 }
 
 \arguments{
@@ -21,7 +21,7 @@ time must be in days.}
 \item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for the
 mortality of the French population, i.e. an array with three dimensions: age, sex and year.}
 \item{m}{A numeric value of the number of internal knots wanted. With the boundary knots, there will
-be m+2 knots. The total number of knots should equal the length of the coefficient vector.}
+be m+2 knots.}
 \item{mpos}{A vector of the different m+2 knots values positions. The values must be specified on 
 the log scale, as no transformation is done on those values compared to the time vector provided. 
 Default is \code{NULL}, and if so, the knots positions will be chosen evenly
@@ -38,6 +38,17 @@ If another value is chosen, the difference must be less than equal than this val
 \code{details} for the optimization process.}
 \item{weights}{A numeric vector for a weighted likelihood, i.e. different contributions of 
 individuals. By default, the weights equal 1.}
+\item{m_s}{A numeric value of the number of internal knots wanted for the splines for each level of stratification. With the boundary knots, there will
+be m_s+2 knots.}
+\item{mpos_s}{A vector of the different m_s+2 knots values positions for the splines for each level of stratification. The values must be specified on 
+the log scale, as no transformation is done on those values compared to the time vector provided. 
+Default is \code{NULL}, and if so, the knots positions will be chosen evenly
+through percentiles of log(times).}
+\item{mquant_s}{A vector of the different m_s+2 knots quantile positions for the splines for each level of stratification. The positions are the 
+percentiles and must be between [0:1]. Default is \code{NULL}, and if so, the knots positions will 
+be chosen evenly through percentiles of log(times). Will be overwritten by \code{mpos_s} if both are
+specified.}
+\item{Kref}{The level of reference when stratifying on a covariate. Default value is NULL. If NULL the value taken will be the maximum one (if numeric) or the last alphabetically (if character string).}
 }
 
 \details{
@@ -106,7 +117,7 @@ plot(PPest)
 
 sFLEX <- survivalFLEXNET(Surv(time, event) ~ stade + delay + ratetable(age = age, year = year, 
                     sex = sexchara), data = dataK, ratetable=fr.ratetable,
-                    m = 2, init = NULL, delta_th = 0, weights = NULL)
+                    m = 2, init = NULL, delta_th = 0, weights = NULL, m_s = NULL, mpos_s = NULL, mquant_s = NULL, Kref = NULL)
 
 sFLEX.pred <- predict(sFLEX, newdata=data.frame( stade=c(0,0,1,1), delay=c(0,1,0,1) ) )
 
