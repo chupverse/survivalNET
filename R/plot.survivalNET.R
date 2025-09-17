@@ -77,8 +77,8 @@ plot.survivalNET <- function(x, n.groups=5, pro.time=NULL, newdata=NULL,
     if(hasArg(ylim)==FALSE) {ylim <- c(0,1)} else {ylim <- list(...)$ylim}
     if(hasArg(xlim)==FALSE) {xlim  <- c(0,1)} else {xlim <- list(...)$xlim}
     
-    if(hasArg(ylab)==FALSE) {ylab <- "Non-parametric estimations"} else {ylab <- list(...)$ylab}
-    if(hasArg(xlab)==FALSE) {xlab <- "Parametric estimations"} else {xlab <- list(...)$xlab}
+    if(hasArg(ylab)==FALSE) {ylab <- "Parametric estimations"} else {ylab <- list(...)$ylab}
+    if(hasArg(xlab)==FALSE) {xlab <- "Non-parametric estimations"} else {xlab <- list(...)$xlab}
     if(hasArg(main)==FALSE) {main <- ""} else {main <- list(...)$main}
   
    plot(.est, .obs, cex = cex, cex.lab = cex.lab, cex.axis = cex.axis, cex.main = cex.main,
