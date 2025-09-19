@@ -38,17 +38,22 @@ If another value is chosen, the difference must be less than equal than this val
 \code{details} for the optimization process.}
 \item{weights}{A numeric vector for a weighted likelihood, i.e. different contributions of 
 individuals. By default, the weights equal 1.}
-\item{m_s}{A numeric value of the number of internal knots wanted for the splines for each level of stratification. With the boundary knots, there will
-be m_s+2 knots.}
-\item{mpos_s}{A vector of the different m_s+2 knots values positions for the splines for each level of stratification. The values must be specified on 
-the log scale, as no transformation is done on those values compared to the time vector provided. 
-Default is \code{NULL}, and if so, the knots positions will be chosen evenly
+\item{m_s}{A numeric value of the number of internal knots wanted for the splines for each level of
+stratification. With the boundary knots, there will be m_s+2 knots.}
+\item{mpos_s}{A vector of the different m_s+2 knots values positions for the splines for each level
+of stratification. The values must be specified on the log scale, as no transformation is done on 
+those values compared to the time vector provided. Default is \code{NULL}, and if so, the knots 
+positions will be chosen evenly
 through percentiles of log(times).}
-\item{mquant_s}{A vector of the different m_s+2 knots quantile positions for the splines for each level of stratification. The positions are the 
-percentiles and must be between [0:1]. Default is \code{NULL}, and if so, the knots positions will 
-be chosen evenly through percentiles of log(times). Will be overwritten by \code{mpos_s} if both are
-specified.}
-\item{Kref}{The level of reference when stratifying on a covariate. Default value is NULL. If NULL the value taken will be the maximum one (if numeric) or the last alphabetically (if character string).}
+\item{mquant_s}{A vector of the different m_s+2 knots quantile positions for the splines for each 
+level of stratification. The positions are the percentiles and must be between [0:1]. Default is 
+\code{NULL}, and if so, the knots positions will be chosen evenly through percentiles of log(times).
+Will be overwritten by \code{mpos_s} if both are specified.}
+\item{Kref}{The level of reference when stratifying on a covariate. Default value is NULL. If NULL 
+the value taken will be the maximum one (if numeric) or the last alphabetically (if character 
+string).}
+\item{Hess}{TRUE or FALSE value to compute the Hessian matrix at the end of the optimisation process
+. Default value is FALSE.}
 }
 
 \details{
@@ -62,12 +67,12 @@ the right side of the formula.
 \cr
 \cr
 The optimization process is a made so that, from initial values, the parameters are estimated with 
-the \code{optim} function. The estimated parameters are then re-used as the initial parameters of
-an optimization process, and while the difference between the old log-likelihood value and the new
-log-likelihood value is different than 0 (or the value chosen with delta_th), the process continue.
-When the difference value is below the threshold or equal to 0 five times, the process stops and the
-optmization process is done one last time with those initial parameters to get the final estimated 
-parameters.
+the \code{optim} function with the Nelder-Mead algorithm. The estimated parameters are then re-used 
+as the initial parameters of an optimization process, and while the difference between the 
+old log-likelihood value and the new log-likelihood value is different than 0 (or the value chosen 
+with delta_th), the process continue. When the difference value is below the threshold or equal to 
+0 five times, the process stops and the optmization process is done one last time with those initial
+parameters to get the final estimated parameters.
 
 }
 

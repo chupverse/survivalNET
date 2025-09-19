@@ -1,6 +1,6 @@
 
 survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant = NULL, init = NULL, 
-                            delta_th = 0, weights=NULL, m_s = NULL, mpos_s = NULL, mquant_s = NULL, Kref = NULL)
+                            delta_th = 0, weights=NULL, m_s = NULL, mpos_s = NULL, mquant_s = NULL, Kref = NULL, Hess = FALSE)
 {
   
   ####### check errors
@@ -154,7 +154,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
       logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, 
                          event = event, cova = cova, hP = hP, w = weights,
                          m = m, mpos = mpos, mquant = mquant,
-                         hessian = TRUE)
+                         hessian = Hess)
     })
     
   }
@@ -293,7 +293,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
         logllmax1 <- optim(par = logllmax1$par, fn = loglik2, time = time, event = event,
                            cova = cova, covatime = timevarnum, hP = hP, w = weights,
                            m = m, mpos = mpos, mquant = mquant, K = K,
-                           hessian = TRUE)
+                           hessian = Hess)
       }, error = function(e) {
         logllmax1 <- last_logllmax1
       })
@@ -426,7 +426,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
       tryCatch({logllmax1 <- optim(par = logllmax1$par, fn = loglik3, time = time, 
                                    event = event, covatime = timevarnum,
                                    hP = hP, w = weights, m = m, mpos = mpos, mquant = mquant, K= K,
-                                   hessian = TRUE)}
+                                   hessian = Hess)}
                , error = function(e){logllmax1 <- last_logllmax1})
     })
   }
@@ -480,7 +480,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     
     logllmax0 <- optim(par = logllmax0$par, fn = loglik0, time = time, 
                        event = event, hP = hP, w = weights, 
-                       hessian = TRUE, m = m, mpos = mpos, mquant = mquant)
+                       hessian = Hess, m = m, mpos = mpos, mquant = mquant)
   })
   
   ##récupération de mpos et mquant si ils n'ont pas été spécifiés dans la formule.
@@ -517,44 +517,66 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
   }
   
   if (!is.null(covnames)){
-    
-    diag_mat <- tryCatch({diag(solve(logllmax1$hessian))}, error = function(e) { 
-      warning("Hessian inversion failed: ", conditionMessage(e))
-      return(NA)})
-    
-    t.table <- data.frame(coef = logllmax1$par,
-                          ecoef = exp(logllmax1$par),
-                          se = sqrt(diag_mat),
-                          z = logllmax1$par/sqrt(diag_mat),
-                          p = 2*(1-pnorm(abs(logllmax1$par/sqrt(diag_mat)), 0, 1)),
-                          row.names = label)
+    if(Hess == TRUE){
+      diag_mat <- tryCatch({diag(solve(logllmax1$hessian))}, error = function(e) { 
+        warning("Hessian inversion failed: ", conditionMessage(e))
+        return(NA)})
+      
+      t.table <- data.frame(coef = logllmax1$par,
+                            ecoef = exp(logllmax1$par),
+                            se = sqrt(diag_mat),
+                            z = logllmax1$par/sqrt(diag_mat),
+                            p = 2*(1-pnorm(abs(logllmax1$par/sqrt(diag_mat)), 0, 1)),
+                            row.names = label)
+    }else{
+      t.table <- data.frame(coef = logllmax1$par,
+                            ecoef = exp(logllmax1$par),
+                            row.names = label)
+    }
   }
   
   if(is.null(covnames) & is.null(timevar)){
-    t.table <- data.frame(coef = logllmax0$par,
-                          ecoef = exp(logllmax0$par),
-                          se = sqrt(diag(solve(logllmax0$hessian))),
-                          z = logllmax0$par/sqrt(diag(solve(logllmax0$hessian))),
-                          p = 2*(1-pnorm(abs(logllmax0$par/sqrt(diag(solve(logllmax0$hessian)))), 0, 1)),
-                          row.names = labelNULL)
+    if(Hess == TRUE){
+      diag_mat <- tryCatch({diag(solve(logllmax0$hessian))}, error = function(e) { 
+        warning("Hessian inversion failed: ", conditionMessage(e))
+        return(NA)})
+      t.table <- data.frame(coef = logllmax0$par,
+                            ecoef = exp(logllmax0$par),
+                            se = sqrt(diag(solve(logllmax0$hessian))),
+                            z = logllmax0$par/sqrt(diag(solve(logllmax0$hessian))),
+                            p = 2*(1-pnorm(abs(logllmax0$par/sqrt(diag(solve(logllmax0$hessian)))), 0, 1)),
+                            row.names = labelNULL)
+    }else{
+      t.table <- data.frame(coef = logllmax0$par,
+                            ecoef = exp(logllmax0$par),
+                            row.names = labelNULL)
+    }
   }
   
   if(is.null(covnames) & !is.null(timevar)){
-    
-    diag_mat <- tryCatch({diag(solve(logllmax1$hessian))}, error = function(e) { 
-      warning("Hessian inversion failed: ", conditionMessage(e))
-      return(NA)})    
-    
-    t.table <- data.frame(coef = logllmax1$par,
-                          ecoef = exp(logllmax1$par),
-                          se = sqrt(diag_mat),
-                          z = logllmax1$par/sqrt(diag_mat),
-                          p = 2*(1-pnorm(abs(logllmax1$par/sqrt(diag_mat)), 0, 1)),
-                          row.names = label)
+    if(Hess == TRUE){
+      diag_mat <- tryCatch({diag(solve(logllmax1$hessian))}, error = function(e) { 
+        warning("Hessian inversion failed: ", conditionMessage(e))
+        return(NA)})    
+      
+      t.table <- data.frame(coef = logllmax1$par,
+                            ecoef = exp(logllmax1$par),
+                            se = sqrt(diag_mat),
+                            z = logllmax1$par/sqrt(diag_mat),
+                            p = 2*(1-pnorm(abs(logllmax1$par/sqrt(diag_mat)), 0, 1)),
+                            row.names = label)
+    }else{
+      t.table <- data.frame(coef = logllmax1$par,
+                            ecoef = exp(logllmax1$par),
+                            row.names = label)
+    }
   }
   
-  names(t.table) <- c("coef", "exp(coef)", "se(coef)", "z", "p")
-  
+  if(Hess == TRUE){
+    names(t.table) <- c("coef", "exp(coef)", "se(coef)", "z", "p")
+  }else{
+    names(t.table) <- c("coef", "exp(coef)")
+  }
   coefficients <- t.table$coef
   names(coefficients) <- label
   
@@ -564,9 +586,10 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
   dimnames(cova)[[2]] <- covnames
   
   solve_mat <- tryCatch({solve(logllmax1$hessian)}, error = function(e) {return(NA)})
+  solve_mat0 <- tryCatch({solve(logllmax0$hessian)}, error = function(e) {return(NA)})
   
   var <- if(!is.null(covnames) || (is.null(covnames) & !is.null(timevar)) ){solve_mat
-  }else{solve(logllmax0$hessian)}
+  }else{solve_mat0}
   
   loglik <- if(!is.null(covnames) || (is.null(covnames) & !is.null(timevar)) ){c(-1*logllmax1$value, -1*logllmax0$value)
   }else{-1*logllmax0$value}
