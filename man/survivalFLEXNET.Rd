@@ -9,7 +9,7 @@ This function allows to compute a flexible regression with splines for modelling
 }
 \usage{
 survivalFLEXNET(formula, data, ratetable, m=3, mpos = NULL, mquant = NULL, init=NULL, delta_th=0,
-weights=NULL, m_s = NULL, mpos_s = NULL, mquant_s = NULL, Kref = NULL)
+weights=NULL, m_s = NULL, mpos_s = NULL, mquant_s = NULL, Kref = NULL, Hess = FALSE)
 }
 
 \arguments{
