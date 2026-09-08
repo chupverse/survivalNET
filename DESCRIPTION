@@ -1,7 +1,7 @@
 Package: survivalNET
 Type: Package
 Title: Relative and Net Survival Modeling
-Version: 0.9.9.5
+Version: 0.9.9.6
 Depends: R (>= 4.0.0), survival, relsurv
 Imports: methods, stats, graphics, dplyr, RISCA
 Description: Several functions and S3 methods to model net survival with flexible approaches: spline-based hazard function, non proportional hazards, etc.

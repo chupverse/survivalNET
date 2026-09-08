@@ -189,13 +189,17 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     s_strata_mat  <- matrix(0, nrow = n_total, ncol = max_s_cols)
     ds_strata_mat <- matrix(0, nrow = n_total, ncol = max_s_cols)
     
+    if(is.null(mpos)){
+      mpos_ref <- splinecube(time, rep(0, m+2), m)$knots
+    }else{mpos_ref = mpos}    
+    
     for(k in K){
       idx <- timevarnum == k
       timek <- time[idx]
       xk <- log(timek)
       
-      tmp  <- splinecube(timek, rep(0, m+2), m, mpos)
-      tmpP <- splinecubeP(timek, rep(0, m+2), m, mpos)
+      tmp  <- splinecube(timek, rep(0, m+2), m, mpos_ref)
+      tmpP <- splinecubeP(timek, rep(0, m+2), m, mpos_ref)
       
       nu  <- if(!is.null(tmp$nu))  tmp$nu  else matrix(0, nrow=length(timek), ncol=0)
       nuP <- if(!is.null(tmpP$nu)) tmpP$nu else matrix(0, nrow=length(timek), ncol=0)
@@ -361,14 +365,17 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     s_strata_mat  <- matrix(0, nrow = n_total, ncol = max_s_cols)
     ds_strata_mat <- matrix(0, nrow = n_total, ncol = max_s_cols)
     
+    if(is.null(mpos)){
+      mpos_ref <- splinecube(time, rep(0, m+2), m)$knots
+    }else{mpos_ref = mpos}    
       
     for (k in K) {
       idx <- timevarnum == k
       timek <- time[idx]
       xk <- log(timek)
       
-      tmp  <- splinecube(timek, rep(0, m+2), m, mpos)
-      tmpP <- splinecubeP(timek, rep(0, m+2), m, mpos)
+      tmp  <- splinecube(timek, rep(0, m+2), m, mpos_ref)
+      tmpP <- splinecubeP(timek, rep(0, m+2), m, mpos_ref)
       
       nu  <- if(!is.null(tmp$nu)) tmp$nu else matrix(0, nrow=length(timek), ncol=0)
       nuP <- if(!is.null(tmpP$nu)) tmpP$nu else matrix(0, nrow=length(timek), ncol=0)
@@ -571,7 +578,6 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
   if (!is.null(xlevels)) {
     if(is.null(mpos)){
       if(is.null(mquant)){
-    
         a <- c()
         for(i in (0:(m+1))){
           a <- c(a,i/(m+1))}
