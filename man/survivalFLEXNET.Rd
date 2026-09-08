@@ -41,8 +41,9 @@ If another value is chosen, the difference must be less than equal than this val
 individuals. By default, the weights equal 1.}
 \item{m_s}{A numeric value of the number of internal knots wanted for the splines for each level of
 stratification. With the boundary knots, there will be m_s+2 knots.}
-\item{mpos_s}{A vector of the different m_s+2 knots values positions for the splines for each level
-of stratification. The values must be specified on the log scale, as no transformation is done on 
+\item{mpos_s}{A list of the different m_s+2 knots values positions for the splines for each d level
+of stratification. Each element of the list must have m_s+2 knots positions values.
+The values must be specified on the log scale, as no transformation is done on 
 those values compared to the time vector provided. Default is \code{NULL}, and if so, the knots 
 positions will be chosen evenly
 through percentiles of log(times).}

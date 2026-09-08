@@ -5,7 +5,7 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
                   'type' must be 'net', 'lp' or 'overall' ")
   if(type == "overall" && "m" %in% names(object))stop("The 'overall' survival prediction
   for survivalFLEXNET is still under development. Please
-                            use 'type = 'relative' or 'lp'. ")
+                            use 'type = 'net' or 'lp'. ")
   ###pour retrouver progress overall -> bacupGITHUB 28_04
   if(is.null(newtimes))  { 
     newtimes <- 1:max(object$y[,1])

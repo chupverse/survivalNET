@@ -15,7 +15,11 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
   if(!is.numeric(delta_th))stop("'delta_th' must be numeric.")
   if(length(delta_th) != 1) stop("'delta_th' must be a single value.") 
   if(!is.null(mpos) & !is.null(mquant))warning("'mpos' and 'mquant' have both been specified. 'mpos' values have been chosen over 'mquant' quantiles.") #ligne : mquant = NULL
-  
+  if(!is.null(m_s)){
+    if(!is.null(mpos_s) & !is.null(mquant_s))warning("'mpos_s' and 'mquant_s' have both been specified. 'mpos_s' values have been chosen over 'mquant_s' quantiles.")
+    if(!is.null(mpos_s) & !is.list(mpos_s))stop("'mpos_s' must be a list of strata knots positions.")
+
+  }
   ####### data management
   
   time <- data[,as.character(formula[[2]][2])] 
@@ -185,15 +189,13 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     s_strata_mat  <- matrix(0, nrow = n_total, ncol = max_s_cols)
     ds_strata_mat <- matrix(0, nrow = n_total, ncol = max_s_cols)
     
-    mpos_ref <- splinecube(time[timevarnum == Kref], rep(0, m+2), m)$knots
-    
     for(k in K){
       idx <- timevarnum == k
       timek <- time[idx]
       xk <- log(timek)
       
-      tmp  <- splinecube(timek, rep(0, m+2), m, mpos_ref)
-      tmpP <- splinecubeP(timek, rep(0, m+2), m, mpos_ref)
+      tmp  <- splinecube(timek, rep(0, m+2), m, mpos)
+      tmpP <- splinecubeP(timek, rep(0, m+2), m, mpos)
       
       nu  <- if(!is.null(tmp$nu))  tmp$nu  else matrix(0, nrow=length(timek), ncol=0)
       nuP <- if(!is.null(tmpP$nu)) tmpP$nu else matrix(0, nrow=length(timek), ncol=0)
@@ -359,15 +361,14 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     s_strata_mat  <- matrix(0, nrow = n_total, ncol = max_s_cols)
     ds_strata_mat <- matrix(0, nrow = n_total, ncol = max_s_cols)
     
-    mpos_ref <- splinecube(time[timevarnum == Kref], rep(0, m+2), m)$knots
-    
+      
     for (k in K) {
       idx <- timevarnum == k
       timek <- time[idx]
       xk <- log(timek)
       
-      tmp  <- splinecube(timek, rep(0, m+2), m, mpos_ref)
-      tmpP <- splinecubeP(timek, rep(0, m+2), m, mpos_ref)
+      tmp  <- splinecube(timek, rep(0, m+2), m, mpos)
+      tmpP <- splinecubeP(timek, rep(0, m+2), m, mpos)
       
       nu  <- if(!is.null(tmp$nu)) tmp$nu else matrix(0, nrow=length(timek), ncol=0)
       nuP <- if(!is.null(tmpP$nu)) tmpP$nu else matrix(0, nrow=length(timek), ncol=0)
@@ -565,18 +566,16 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     }
   }
   }
+  
   ## same for mpos_s
   if (!is.null(xlevels)) {
-    
     if(is.null(mpos)){
       if(is.null(mquant)){
-        idx <- timevarnum == Kref
-        
-        timeref <- time[idx]
+    
         a <- c()
         for(i in (0:(m+1))){
           a <- c(a,i/(m+1))}
-        mpos <- quantile(log(timeref), probs = a)
+        mpos <- quantile(log(time), probs = a)
         mpos <- as.numeric(mpos)
         mquant <- a 
       }else{
