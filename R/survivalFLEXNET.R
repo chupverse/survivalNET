@@ -590,6 +590,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
       }
     }
     
+    if(is.null(mpos_s)){
     mpos_s <- list()
     for (k in nonref) {
       idx <- timevarnum == k
@@ -604,6 +605,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
       mquant_s <- a 
       
       mpos_s[[k]] <- mpos_s_k
+    }
     }
   }
   
