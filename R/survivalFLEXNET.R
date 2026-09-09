@@ -214,11 +214,19 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
     }
     
     for (k in nonref) {
+      
+      if(!is.null(mpos_s)){if(is.list(mpos_s)){
+        if(length(mpos_s) != length(K))stop("'mpos_s' must be a list where each element is the knots positions for each level of the time-dependent covariate. The knots position of the reference stratum must be left as 'NULL'") 
+        if(!is.null(mpos_s[[Kref]]))stop("'mpos_s' must be a list where each element is the knots positions for each level of the time-dependent covariate. The knots position of the reference stratum must be left as 'NULL'")
+        }
+      }
+      
+
       idx <- timevarnum == k
       timek <- time[idx]
       xk <- log(timek)
       
-      mpos_s_k <- if(is.list(mpos_s)) mpos_s[[as.character(k)]] else mpos_s
+      mpos_s_k <- if(!is.null(mpos_s)) mpos_s[[k]] else mpos_s
       tmp  <- splinecube(timek, rep(0, m_s+2), m_s, mpos_s_k, mquant_s)
       tmpP <- splinecubeP(timek, rep(0, m_s+2), m_s, mpos_s_k, mquant_s)
       
@@ -391,11 +399,18 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
       
     }
       for (k in nonref) {
-        idx <- timevarnum == k
-        timek <- time[idx]
-        xk <- log(timek)
-        
-        mpos_s_k <- if(is.list(mpos_s)) mpos_s[[as.character(k)]] else mpos_s
+        if(!is.null(mpos_s)){if(is.list(mpos_s)){
+        if(length(mpos_s) != length(K))stop("'mpos_s' must be a list where each element is the knots positions for each level of the time-dependent covariate. The knots position of the reference stratum must be left as 'NULL'") 
+        if(!is.null(mpos_s[[Kref]]))stop("'mpos_s' must be a list where each element is the knots positions for each level of the time-dependent covariate. The knots position of the reference stratum must be left as 'NULL'")
+        }
+      }
+      
+
+      idx <- timevarnum == k
+      timek <- time[idx]
+      xk <- log(timek)
+      
+      mpos_s_k <- if(!is.null(mpos_s)) mpos_s[[k]] else mpos_s
         tmp_s  <- splinecube(timek, rep(0, m_s+2), m_s, mpos_s_k, mquant_s)
         tmp_sP <- splinecubeP(timek, rep(0, m_s+2), m_s, mpos_s_k, mquant_s)
         
