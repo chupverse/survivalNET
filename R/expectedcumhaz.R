@@ -31,55 +31,39 @@ expectedcumhaz <- function(ratetable, age, year, sex, time, method="exact", subd
   
   if (method == "table") {
     
-    table_scalar <- function(t) {
-      birth_md <- format(
-        as.Date(year - age, origin = "1960-01-01"),
-        "%m-%d"
-      )
-      if (birth_md == "02-29") birth_md <- "03-01"
+    .yrs   <- 1800:2600
+    .jan1  <- as.numeric(as.Date(paste0(.yrs, "-01-01")) - as.Date("1960-01-01"))
+    .year_of <- function(d) .yrs[findInterval(d, .jan1)]
+    
+    table_scalar <- function(ratetable, age, year, sex, t) {
+      if (t <= 0) return(0)
       
-      bday <- as.Date(
-        paste0(
-          format(as.Date(year, origin = "1960-01-01"), "%Y"),
-          "-", birth_md
-        )
-      )
+      max_age  <- max(as.numeric(dimnames(ratetable)$age))
+      max_year <- max(as.numeric(dimnames(ratetable)$year))
       
-      next_y <- as.Date(
-        paste0(
-          as.numeric(format(as.Date(year, origin = "1960-01-01"), "%Y")) + 1,
-          "-01-01"
-        )
-      )
+      lo <- floor(age / 365.24) + 1
+      hi <- floor((age + t) / 365.24)
+      b_age <- if (hi >= lo) (lo:hi) * 365.24 - age else numeric(0)
       
-      end_date <- as.Date(year + t, origin = "1960-01-01")
+      ## ruptures d'année : 1er janvier du calendrier
+      b_year <- .jan1[.jan1 > year & .jan1 < year + t] - year
       
-      dates <- sort(unique(c(
-        as.Date(year, origin = "1960-01-01"),
-        bday + 365.24 * seq_len(200),
-        next_y + 365.24 * seq_len(200),
-        end_date
-      )))
-      dates <- dates[dates <= end_date]
+      cuts  <- sort(unique(c(0, b_age, b_year, t)))
+      delta <- diff(cuts)
+      mid   <- cuts[-length(cuts)] + delta / 2    
       
-      delta <- as.numeric(diff(dates))
+      a_i <- pmin(floor((age + mid) / 365.24), max_age)
+      y_i <- pmin(.year_of(year + mid), max_year)
       
-      age_i  <- floor((age + cumsum(c(0, delta[-length(delta)]))) / 365.24)
-      year_i <- as.numeric(format(dates[-length(dates)], "%Y"))
+      values <- list(age  = as.character(a_i),
+                     year = as.character(y_i),
+                     sex  = rep(sex, length(a_i)))
+      idx <- do.call(cbind, values[names(dimnames(ratetable))])   
       
-      age_i  <- pmin(age_i,  max(as.numeric(dimnames(ratetable)[[1]])))
-      year_i <- pmin(year_i, max(as.numeric(dimnames(ratetable)[[2]])))
-      
-      haz <- ratetable[
-        as.character(age_i),
-        as.character(year_i),
-        sex
-      ]
-      
-      sum(haz * delta)
+      sum(ratetable[idx] * delta)
     }
     
-    results <- vapply(time, table_scalar, numeric(1))
+    results <- vapply(time, function(t) table_scalar(ratetable, age, year, sex, t), numeric(1))
     
     return(matrix(results, ncol =1))
   }

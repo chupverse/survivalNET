@@ -202,7 +202,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
       tmpP <- splinecubeP(timek, rep(0, m+2), m, mpos_ref)
       
       nu  <- if(!is.null(tmp$nu))  tmp$nu  else matrix(0, nrow=length(timek), ncol=0)
-      nuP <- if(!is.null(tmpP$nu)) tmpP$nu else matrix(0, nrow=length(timek), ncol=0)
+      nuP <- if(!is.null(tmpP$nu_prime)) tmpP$nu_prime else matrix(0, nrow=length(timek), ncol=0)
       
       s_base_mat[idx, 1] <- 1           
       s_base_mat[idx, 2] <- xk          
@@ -231,7 +231,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
       tmpP <- splinecubeP(timek, rep(0, m_s+2), m_s, mpos_s_k, mquant_s)
       
       nu  <- if(!is.null(tmp$nu)) tmp$nu else matrix(0, nrow = length(timek), ncol = 0)
-      nuP <- if(!is.null(tmpP$nu)) tmpP$nu else matrix(0, nrow = length(timek), ncol = 0)
+      nuP <- if(!is.null(tmpP$nu_prime)) tmpP$nu_prime else matrix(0, nrow = length(timek), ncol = 0)
       
       s_strata_mat[idx, 1:(2+ncol(nu))]  <- cbind(1, xk, nu)
       ds_strata_mat[idx, 1:(2+ncol(nuP))] <- cbind(0, 1, nuP)
@@ -386,7 +386,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
       tmpP <- splinecubeP(timek, rep(0, m+2), m, mpos_ref)
       
       nu  <- if(!is.null(tmp$nu)) tmp$nu else matrix(0, nrow=length(timek), ncol=0)
-      nuP <- if(!is.null(tmpP$nu)) tmpP$nu else matrix(0, nrow=length(timek), ncol=0)
+      nuP <- if(!is.null(tmpP$nu_prime)) tmpP$nu_prime else matrix(0, nrow=length(timek), ncol=0)
       
       # baseline matrix
       s_base_mat[idx, 1] <- 1
@@ -415,7 +415,7 @@ survivalFLEXNET <- function(formula, data, ratetable, m=3, mpos = NULL, mquant =
         tmp_sP <- splinecubeP(timek, rep(0, m_s+2), m_s, mpos_s_k, mquant_s)
         
         nu <- if(!is.null(tmp_s$nu)) tmp_s$nu else matrix(0, nrow=length(timek), ncol=0)
-        nuP <- if(!is.null(tmp_sP$nu)) tmp_sP$nu else matrix(0, nrow=length(timek), ncol=0)
+        nuP <- if(!is.null(tmp_sP$nu_prime)) tmp_sP$nu_prime else matrix(0, nrow=length(timek), ncol=0)
         
         s_strata_mat[idx, 1:(2+ncol(nu))]  <- cbind(1, xk, nu)
         ds_strata_mat[idx, 1:(2+ncol(nuP))] <- cbind(0, 1, nuP)
