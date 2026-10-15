@@ -6,9 +6,9 @@ splinecubeP <- function(time, gamma, m, mpos = NULL, mquant = NULL)
 {
   
   ##error check
-  if(length(time)<2)stop("length(time)<2. At least 2 times are necessary 
-                                 to compute the spline")
-  
+  if(is.null(mpos)){
+    if(length(time)<2)stop("length(time)<2. At least 2 times are necessary to compute the spline if no knots positions are given (mpos = NULL)")
+  }
   if(length(gamma)!=(m+2))stop("The length of the gamma's coefficients vector
                                 should be ", m+2)
   if(!is.null(mpos) & m+2 != length(mpos))stop("Number of knots positions must be equal to m+2=", m+2)
@@ -39,7 +39,7 @@ splinecubeP <- function(time, gamma, m, mpos = NULL, mquant = NULL)
    
      res <- list(
       spln = spln,
-      mpos = mpos)
+      knots = mpos)
   }else{
     phi <- c()
     nu_prime <- c()

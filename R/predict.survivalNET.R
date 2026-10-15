@@ -5,7 +5,7 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
                   'type' must be 'net', 'lp' or 'overall' ")
   if(type == "overall" && "m" %in% names(object))stop("The 'overall' survival prediction
   for survivalFLEXNET is still under development. Please
-                            use 'type = 'relative' or 'lp'. ")
+                            use 'type = 'net' or 'lp'. ")
   ###pour retrouver progress overall -> bacupGITHUB 28_04
   if(is.null(newtimes))  { 
     newtimes <- 1:max(object$y[,1])
@@ -219,9 +219,9 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
         if(dim(object$x)[2] != 0){
           
           flex_net_strata_cov <- function(x, covariates, gamma, gammas) {
-            n <- dim(covariates)[1]
-            timpos <- dim(covariates)[2]
-            timeval <- covariates[, timpos] 
+            n <- nrow(covariates)
+            timpos <- ncol(covariates)
+            timeval <- covariates[, timpos]
             
             spln <- splinecube(x, gamma, m, mpos)$spln
             
@@ -231,41 +231,38 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
             
             splnvalues_list <- lapply(unique(timeval), function(tv) {
               if (tv == Kref) {
-                rep(0, length(x)) 
+                rep(0, length(x))
               } else {
                 col_idx <- ref_map[as.character(tv)]
-                splinecube(x, gammas[, col_idx], m_s, mpos_s)$spln
+                mpos_s_k <- if (is.list(mpos_s)) mpos_s[[tv]] else mpos_s
+                splinecube(x, gammas[, col_idx], m_s, mpos_s_k)$spln
               }
             })
             
             splnvalues_map <- setNames(splnvalues_list, unique(timeval))
             
-            # Precompute linear predictors
             covariates_matrix <- as.matrix(covariates[, -timpos, drop = FALSE])
             linpred <- covariates_matrix %*% beta
             
-            # Compute survival estimates using vectorized operations
             splnvalues <- t(sapply(seq_along(timeval), function(i) {
               tv <- timeval[i]
               if (tv %in% names(splnvalues_map)) {
                 spln + splnvalues_map[[as.character(tv)]]
               } else {
-                spln   # reference stratum → only baseline
+                spln
               }
             }))
-            sur <- exp(-exp(as.vector(linpred)) * exp(splnvalues))
             
+            sur <- exp(-exp(as.vector(linpred)) * exp(splnvalues))
             return(sur)
-          }
-        }
+          }        }
         
         ##pas de covariables 
         if(dim(object$x)[2] == 0){
-          
           flex_net_strata_nocov <- function(x, covariates, gammas) {
-            n <- dim(covariates)[1]
-            timpos <- dim(covariates)[2]
-            timeval <- covariates[, timpos]  # Extract all time variable indices
+            n <- nrow(covariates)
+            timpos <- ncol(covariates)
+            timeval <- covariates[, timpos]
             
             spln <- splinecube(x, gamma, m, mpos)$spln
             
@@ -275,26 +272,20 @@ predict.survivalNET <- function(object, type="net", newdata=NULL, newtimes=NULL,
             
             splnvalues_list <- lapply(unique(timeval), function(tv) {
               if (tv == Kref) {
-                rep(0, length(x)) 
+                splinecube(x, gamma, m, mpos)$spln  
               } else {
                 col_idx <- ref_map[as.character(tv)]
-                splinecube(x, gammas[, col_idx], m_s, mpos_s)$spln
+                splinecube(x, gamma, m, mpos)$spln + splinecube(x, gammas[, col_idx], m_s, mpos_s)$spln
               }
             })
             
             splnvalues_map <- setNames(splnvalues_list, unique(timeval))
             
-            # Compute survival estimates using vectorized operations
-            splnvalues <- t(sapply(seq_along(timeval), function(i) {
-              tv <- timeval[i]
-              if (tv %in% names(splnvalues_map)) {
-                spln + splnvalues_map[[as.character(tv)]]
-              } else {
-                spln   # reference stratum → only baseline
-              }
+            t(sapply(seq_along(timeval), function(i) {
+              splnvalues_list[[as.character(timeval[i])]]
             }))
-            sur <- exp(-1*exp(splnvalues))
             
+            sur <- exp(-exp(splnvalues))
             return(sur)
           }
         }

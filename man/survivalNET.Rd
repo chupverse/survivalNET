@@ -18,8 +18,9 @@ side, it is necessary to specify a '+\code{ratetable}(age = age, year = year, se
 "age", "year" and "sex" must be the name of the the covariates in the dataframe that matches the
 ratetable. The time must be in days.}
 \item{data}{A data frame in which to look for the variables included in the \code{formula}.}
-\item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for the
-mortality of the French population, i.e. an array with three dimensions: age, sex and year.}
+\item{ratetable}{A table of expected rates of the studied event, i.e an array with three dimensions
+in the order : age, year and sex, such as \code{fr.ratetable} for the mortality of the French 
+population.}
 \item{dist}{A character string listed in the following table to define the baseline hazard function.
 By default, the Weibull distribution is used.}
 \item{init}{A numeric vector of the initial parameters values for the optimization process. Default

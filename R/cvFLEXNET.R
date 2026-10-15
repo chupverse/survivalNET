@@ -1,8 +1,8 @@
 
 cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10, 
-                      m = 2, mpos = NULL, mquant = NULL, init = NULL, delta_th = 0,
-                      weights = NULL, m_s = NULL, Kref = NULL, metric = "ibs"){
-  ####### check errors
+                       m = 2, mpos = NULL, mquant = NULL, init = NULL, delta_th = 0,
+                       weights = NULL, m_s = NULL, Kref = NULL, stand = NULL){
+  
   if (missing(formula)) stop("a formula argument is required")
   if (missing(data)) stop("a data argument is required")
   if (missing(ratetable)) stop("a ratetable argument is required")
@@ -145,11 +145,11 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
   .time <- sort(unique(data.net[,times]))
   
   if(is.null(m_s)){
-  if(is.null(mpos) && is.null(mquant)){
-    .grid <-  expand.grid(m = m)}else if(!is.null(mpos)){
-      .grid <- expand.grid(m = m, mpos  = mpos)}else{
-        .grid <- expand.grid(m = m, mquant  = mquant)
-      }
+    if(is.null(mpos) && is.null(mquant)){
+      .grid <-  expand.grid(m = m)}else if(!is.null(mpos)){
+        .grid <- expand.grid(m = m, mpos  = mpos)}else{
+          .grid <- expand.grid(m = m, mquant  = mquant)
+        }
   }else{
     if(is.null(mpos) && is.null(mquant)){
       .grid <-  expand.grid(m = m, m_s = m_s)}else if(!is.null(mpos)){
@@ -169,10 +169,28 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
   
   .CVtune<-vector("list",cv*dim(.grid)[1])
   
+  if (!is.null(stand)) {
+    if (!is.character(stand))
+      stop("'standardize' must be a character vector of variable names.")
+    missing_vars <- setdiff(stand, names(data.net))
+    if (length(missing_vars) > 0)
+      stop("The following variables are not in 'data': ",
+           paste(missing_vars, collapse = ", "))
+  }
+
+  
   l<-1
   for (k in 1:cv){
+    trainSt <- data.net[data.net$folds != k, ]
+    validSt <- data.net[data.net$folds == k, ]
+    if (!is.null(stand)) {
+      muSt <- sapply(trainSt[, stand, drop = FALSE], mean)
+      sigmaSt <- sapply(trainSt[, stand, drop = FALSE], sd)
+      trainSt[, stand] <- scale(trainSt[, stand, drop = FALSE], center = muSt, scale = sigmaSt)
+      validSt[, stand] <- scale(validSt[, stand, drop = FALSE],center = muSt,scale = sigmaSt)
+    }
     for (j in 1:dim(.grid)[1]){
-      .CVtune[[l]]<-list(train=data.net[data.net$folds!=k, ], valid=data.net[data.net$folds==k, ], grid=.grid[j,], init = correstab[j,"init"])
+      .CVtune[[l]]<-list(train=trainSt, valid=validSt, grid=.grid[j,])
       l=l+1
     }
   }
@@ -231,7 +249,12 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
       .time <- newtimes
     }
     
-    return(as.matrix(.pred))
+    keep_mod <- .net
+    
+    return(list(
+      pred = as.matrix(.pred),
+      model = .net
+    ))
   }
   
   .preFIT<-list()
@@ -241,27 +264,121 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
   
   .FitCV <- replicate(dim(.grid)[1], matrix(NA, nrow = length(data[,times]),
                                             ncol = length(.time)), simplify=F)
+  .modelsCV <- vector("list", dim(.grid)[1])
   l<-1
   for (k in 1:cv){
     for (j in 1:dim(.grid)[1]){
-      .FitCV[[j]][data.net$folds==k,] <- .preFIT[[l]]
+      .FitCV[[j]][data.net$folds==k,] <- .preFIT[[l]]$pred
+      .modelsCV[[j]][[k]] <- .preFIT[[l]]$model
       l<-l+1
     }
   }
   
-  net.best.measure <- function(prediction.matrix, formula, data, prediction.times){
-    .times <- as.character(formula[[2]][2])
-    .failures <- as.character(formula[[2]][3])
-    .outcome <- paste("Surv(", .times, ",", .failures, ")")
-    .predformula <- as.formula(paste(.outcome, "~ 1"))
-    return(metrics(formula = .predformula, prediction.matrix =
-                     as.matrix(as.data.frame(prediction.matrix)),
-                   data=data, prediction.times=prediction.times,
-                   pro.time=pro.time, metric= metric))
+  
+  net.loglik <- function(model, data, formula, ratetable) {
+    
+    times <- as.character(formula[[2]][2])
+    failures <- as.character(formula[[2]][3])
+    
+    time <- data[, times]
+    event <- data[, failures]
+    
+    
+    hP <- sapply(seq_along(time), function(i) {
+      survivalNET::expectedhaz(ratetable = ratetable, age = data[i, age], sex = data[i, sexchara], year = data[i, year], time = time[i])
+    })
+    
+    coeff <- model$coefficients
+    
+    m <- model$m  
+    m_s <- model$m_s
+    
+    beta_est <- coeff[1:(length(coeff)-(m+2))]
+    gamma_est <- tail(coeff, m+2)
+    
+    if(!is.null(m_s)){
+      beta_est <-  coeff[(1:(dim(model$x)[2]) )] 
+      gamma_est <- coeff[((dim(model$x)[2]+1): (length(coeff)))]  
+    }
+    
+    cova <- as.matrix(data[, names(beta_est), drop = FALSE])
+    
+    
+    if(is.null(m_s)){
+      spln <- survivalNET::splinecube(time, gamma_est, m, model$mpos)$spln
+      spln_P <- survivalNET::splinecubeP(time, gamma_est, m, model$mpos)$spln
+      
+      hE <- (1/time) * spln_P * exp(spln + cova %*% beta_est)
+      
+      loglik <- sum(event * log(hP + hE) - exp(spln + cova %*% beta_est))
+      
+    }else{
+      
+      value <- c()
+      K <- sort(unique(data[,strata_var]))
+      
+      gamma_base <- gamma_est[1:(m+2)]
+      
+      for(k in K){
+        betak <- beta_est
+        gammak <- gamma_est[((m+2)+1+(k-1)*(m_s+2)):((m+2)+(k)*(m_s+2))]
+        idx <- data[,strata_var] == k
+        
+        timek <- time[idx]
+        eventk <- event[idx]
+        hPk <- hP[idx]
+        covak <- cova[idx, , drop = FALSE]
+        
+        splk_base <- survivalNET::splinecube(timek, gamma_base, m, model$mpos)$spln
+        splkP_base <- survivalNET::splinecubeP(timek, gamma_base, m, model$mpos)$spln
+        
+        Kref <- model$Kref
+        
+        if (k != Kref) {
+          splk  <- survivalNET::splinecube(timek, gammak, m_s, model$mpos_s[[k]])$spln
+          splkP <- survivalNET::splinecubeP(timek, gammak, m_s, model$mpos_s[[k]])$spln
+        } else {
+          splk <- 0
+          splkP <- 0
+        }
+        linpred <- splk_base + splk + covak %*% betak
+        
+        calc <- hPk + (1/timek) * (splkP_base + splkP) * exp(linpred)
+        
+        # value_k <- sum( (
+        #   eventk[calc >= 0] * log( calc[calc >= 0] )) -
+        #     exp(linpred[calc >= 0]))
+        value_k <- sum( (
+          eventk * log( calc )) -
+            exp(linpred))
+        value <- c(value, value_k)
+        loglik <- sum(value)
+      }
+    }
+    
+    return(loglik)
+  }  
+  
+  
+  .measure <- matrix(NA, nrow = dim(.grid)[1], ncol = cv)
+  
+  for (j in 1:dim(.grid)[1]) {
+    for (k in 1:cv) {
+      
+      model <- .modelsCV[[j]][[k]]
+      
+      valid_data <- .CVtune[[(k - 1) * nrow(.grid) + 1]]$valid
+      
+      .measure[j, k] <- net.loglik(
+        model = model,
+        data = valid_data,
+        formula = formula,
+        ratetable = ratetable
+      )
+    }
   }
   
-  .measure<-sapply(.FitCV, net.best.measure, formula = formula , data=data.net, prediction.times=.time)
-  
+  .measure = rowMeans(.measure)
   
   if(is.null(m_s)){
     if(is.null(mpos) && is.null(mquant)){
@@ -269,7 +386,7 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
     }else if(!is.null(mpos)){
       .res <- data.frame(m = .grid[,1], mpos = as.character(.grid[,2]), measure = .measure)
     }else{
-    .res <- data.frame(m = .grid[,1], mquant = as.character(.grid[,2]), measure = .measure)
+      .res <- data.frame(m = .grid[,1], mquant = as.character(.grid[,2]), measure = .measure)
     }
   }else{
     if(is.null(mpos) && is.null(mquant)){
@@ -295,4 +412,3 @@ cvFLEXNET <- function(formula, pro.time=NULL, data, ratetable, cv=10,
   }
   return(res_list)
 }
-

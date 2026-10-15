@@ -5,7 +5,7 @@
 Expected Mortality Rates of the General French Population
 }
 \description{
-An object of class rate table for the expected mortality of the French population. It is an array with three dimensions: age, year, and sex.
+An object of class rate table for the expected mortality of the French population. It is an array with three dimensions: age, year and sex.
 }
 \usage{data(fr.ratetable)}
 \format{

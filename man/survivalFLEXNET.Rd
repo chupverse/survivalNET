@@ -18,8 +18,9 @@ right. The response must be a survival object as returned by the \code{Surv} fun
 side, it is necessary to specify a '+\code{ratetable}(age = age, year = year, sex = sex)' term. The 
 time must be in days.}
 \item{data}{A data frame in which to look for the variables included in the \code{formula}.}
-\item{ratetable}{A table of expected rates of the studied event, such as \code{fr.ratetable} for the
-mortality of the French population, i.e. an array with three dimensions: age, sex and year.}
+\item{ratetable}{A table of expected rates of the studied event, i.e an array with three dimensions
+in the order : age, year and sex, such as \code{fr.ratetable} for the mortality of the French 
+population.}
 \item{m}{A numeric value of the number of internal knots wanted. With the boundary knots, there will
 be m+2 knots.}
 \item{mpos}{A vector of the different m+2 knots values positions. The values must be specified on 
@@ -40,8 +41,9 @@ If another value is chosen, the difference must be less than equal than this val
 individuals. By default, the weights equal 1.}
 \item{m_s}{A numeric value of the number of internal knots wanted for the splines for each level of
 stratification. With the boundary knots, there will be m_s+2 knots.}
-\item{mpos_s}{A vector of the different m_s+2 knots values positions for the splines for each level
-of stratification. The values must be specified on the log scale, as no transformation is done on 
+\item{mpos_s}{A list of the different m_s+2 knots values positions for the splines for each d level
+of stratification. Each element of the list must have m_s+2 knots positions values.
+The values must be specified on the log scale, as no transformation is done on 
 those values compared to the time vector provided. Default is \code{NULL}, and if so, the knots 
 positions will be chosen evenly
 through percentiles of log(times).}

@@ -1,4 +1,3 @@
-import(splines)
 import(survival)
 import(relsurv)
 
@@ -19,7 +18,6 @@ export(survivalFLEXNET)
 export(expectedcumhaz)
 export(expectedhaz)
 export(cvFLEXNET)
-export(metrics)
 export(splinecube)
 export(splinecubeP)
 
