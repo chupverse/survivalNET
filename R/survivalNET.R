@@ -187,7 +187,7 @@ survivalNET <- function(formula, data, ratetable, dist="weibull", init = NULL, d
       }
       
       logllmax1 <- optim(par = logllmax1$par, fn = loglik1, time = time, event = event,
-                         cova = cova, hP = hP, , w = weights, hessian = TRUE)
+                         cova = cova, hP = hP, w = weights, hessian = TRUE)
     })  
     
   }
